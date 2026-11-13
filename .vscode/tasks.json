@@ -1,0 +1,82 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "1. Start PostgreSQL Database",
+      "type": "shell",
+      "command": "& 'C:\\Program Files\\PostgreSQL\\18\\bin\\pg_ctl.exe' -D 'C:\\Users\\TUSHAR\\.gemini\\antigravity\\scratch\\pgdata' start",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "2. Run Migrations & Seed",
+      "type": "shell",
+      "command": "npx ts-node src/database/run-migrations.ts; npm run seed",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "3. Start Backend (NestJS)",
+      "type": "npm",
+      "script": "start:dev",
+      "path": "backend",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "typescript",
+        "pattern": "$tsc",
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*Starting Nest application.*",
+          "endsPattern": ".*Nest application successfully started.*"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "servers"
+      }
+    },
+    {
+      "label": "4. Start Frontend (React / Vite)",
+      "type": "npm",
+      "script": "dev",
+      "path": "frontend",
+      "isBackground": true,
+      "problemMatcher": {
+        "pattern": {
+          "regexp": "^$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*VITE.*",
+          "endsPattern": ".*Local:.*http://localhost.*"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "servers"
+      }
+    },
+    {
+      "label": "Run Backend Tests",
+      "type": "npm",
+      "script": "test",
+      "path": "backend",
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    }
+  ]
+}
