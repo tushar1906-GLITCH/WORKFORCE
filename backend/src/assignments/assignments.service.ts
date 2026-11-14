@@ -8,26 +8,11 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { WorkerAssignment, Worker, WorkSite, SupervisorSite } from '../database/entities';
-import { Role, AssignmentStatus } from '../common/enums';
+import { Role, AssignmentStatus, WorkerStatus } from '../common/enums';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
+import { CreateAssignmentDto, TransferWorkerDto } from './dto/assignment.dto';
 
-export interface CreateAssignmentDto {
-  workerId: string;
-  workSiteId: string;
-  shiftId?: string;
-  startDate: string;
-  endDate?: string;
-  roleTitle?: string;
-  supervisorId?: string;
-}
-
-export interface TransferWorkerDto {
-  targetWorkSiteId: string;
-  targetShiftId?: string;
-  effectiveDate: string;
-  roleTitle?: string;
-  notes?: string;
-}
+export { CreateAssignmentDto, TransferWorkerDto };
 
 @Injectable()
 export class AssignmentsService {
@@ -101,9 +86,21 @@ export class AssignmentsService {
       await this.checkSupervisorAccess(user.id, dto.workSiteId);
     }
 
-    // Check worker exists
+    // Check target work location exists and is ACTIVE
+    const site = await this.siteRepo.findOne({ where: { id: dto.workSiteId } });
+    if (!site) throw new NotFoundException('Work location not found');
+    if (site.status === 'INACTIVE') {
+      throw new BadRequestException(`Cannot assign worker: Work location "${site.name}" is inactive`);
+    }
+
+    // Check worker exists and is ACTIVE
     const worker = await this.workerRepo.findOne({ where: { id: dto.workerId } });
     if (!worker) throw new NotFoundException('Worker not found');
+    if (worker.status === WorkerStatus.INACTIVE) {
+      throw new BadRequestException(
+        `Cannot assign inactive worker ${worker.workerCode} (${worker.fullName}). Please reactivate the worker first.`,
+      );
+    }
 
     // Rule: Prevent overlapping active assignments for the same worker
     const activeAssignment = await this.waRepo.findOne({
@@ -147,6 +144,17 @@ export class AssignmentsService {
       relations: ['worker', 'workSite'],
     });
     if (!current) throw new NotFoundException('Assignment not found');
+
+    if (current.worker.status === WorkerStatus.INACTIVE) {
+      throw new BadRequestException('Cannot transfer an inactive worker. Please reactivate the worker first.');
+    }
+
+    // Check target work location exists and is ACTIVE
+    const targetSite = await this.siteRepo.findOne({ where: { id: dto.targetWorkSiteId } });
+    if (!targetSite) throw new NotFoundException('Target work location not found');
+    if (targetSite.status === 'INACTIVE') {
+      throw new BadRequestException(`Cannot transfer worker: Target work location "${targetSite.name}" is inactive`);
+    }
 
     // Both current site and target site checks if supervisor
     if (user.role === Role.SUPERVISOR) {

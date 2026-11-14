@@ -15,29 +15,14 @@ import {
   LeaveRequest,
   PayrollItem,
   SupervisorSite,
+  WorkSite,
 } from '../database/entities';
-import { Role, WorkerStatus, AssignmentStatus, WageType } from '../common/enums';
+import { Role, WorkerStatus, AssignmentStatus, WageType, EmploymentType } from '../common/enums';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
+import { CreateWorkerDto } from './dto/create-worker.dto';
+import { UpdateWorkerDto } from './dto/update-worker.dto';
 
-export interface CreateWorkerDto {
-  fullName: string;
-  phone: string;
-  email?: string;
-  address: string;
-  dateOfBirth?: string;
-  gender?: string;
-  joiningDate: string;
-  departmentId?: string;
-  skillCategoryId?: string;
-  employmentType?: any;
-  emergencyContact?: string;
-  // Optional initial assignment
-  workSiteId?: string;
-  shiftId?: string;
-  // Optional initial wage
-  wageType?: WageType;
-  wageRate?: string;
-}
+export { CreateWorkerDto, UpdateWorkerDto };
 
 export interface WorkerQueryDto {
   search?: string;
@@ -67,6 +52,8 @@ export class WorkersService {
     private payrollItemRepo: Repository<PayrollItem>,
     @InjectRepository(SupervisorSite)
     private ssRepo: Repository<SupervisorSite>,
+    @InjectRepository(WorkSite)
+    private siteRepo: Repository<WorkSite>,
     private dataSource: DataSource,
     private activityLogsService: ActivityLogsService,
   ) {}
@@ -237,6 +224,13 @@ export class WorkersService {
   }
 
   async create(dto: CreateWorkerDto, user: any, ip?: string) {
+    // Validate Indian mobile phone format
+    if (!dto.phone || !/^[6-9]\d{9}$/.test(dto.phone)) {
+      throw new BadRequestException(
+        'Phone number must be a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9',
+      );
+    }
+
     // If supervisor is creating, they must assign worker to one of their supervised sites
     if (user.role === Role.SUPERVISOR) {
       if (!dto.workSiteId) {
@@ -247,6 +241,17 @@ export class WorkersService {
       });
       if (!hasAccess) {
         throw new ForbiddenException('You can only register workers for your assigned work locations');
+      }
+    }
+
+    // Verify initial work site is active if provided
+    if (dto.workSiteId) {
+      const site = await this.siteRepo.findOne({ where: { id: dto.workSiteId } });
+      if (!site) {
+        throw new NotFoundException('Work location not found');
+      }
+      if (site.status === 'INACTIVE') {
+        throw new BadRequestException(`Cannot assign worker to inactive work location "${site.name}"`);
       }
     }
 
@@ -268,7 +273,7 @@ export class WorkersService {
         joiningDate: dto.joiningDate,
         departmentId: dto.departmentId || null,
         skillCategoryId: dto.skillCategoryId || null,
-        employmentType: dto.employmentType || 'DAILY_WAGE',
+        employmentType: dto.employmentType || EmploymentType.DAILY_WAGE,
         status: WorkerStatus.ACTIVE,
         emergencyContact: dto.emergencyContact || null,
       });
@@ -322,11 +327,19 @@ export class WorkersService {
     }
   }
 
-  async update(id: string, dto: Partial<CreateWorkerDto> & { status?: WorkerStatus }, user: any, ip?: string) {
+  async update(id: string, dto: UpdateWorkerDto, user: any, ip?: string) {
     const worker = await this.findOne(id, user); // validates supervisor scope
 
+    if (dto.phone) {
+      if (!/^[6-9]\d{9}$/.test(dto.phone)) {
+        throw new BadRequestException(
+          'Phone number must be a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9',
+        );
+      }
+      worker.phone = dto.phone;
+    }
+
     if (dto.fullName) worker.fullName = dto.fullName;
-    if (dto.phone) worker.phone = dto.phone;
     if (dto.email !== undefined) worker.email = dto.email;
     if (dto.address) worker.address = dto.address;
     if (dto.dateOfBirth !== undefined) worker.dateOfBirth = dto.dateOfBirth;
@@ -369,10 +382,15 @@ export class WorkersService {
 
   async deactivate(id: string, user: any, ip?: string) {
     const worker = await this.findOne(id, user);
+
+    if (worker.status === WorkerStatus.INACTIVE) {
+      throw new BadRequestException(`Worker ${worker.workerCode} is already inactive`);
+    }
+
     worker.status = WorkerStatus.INACTIVE;
     await this.workerRepo.save(worker);
 
-    // Mark current active assignments as completed
+    // Mark current active assignments as completed (preserve historical records)
     await this.waRepo.update(
       { workerId: id, status: AssignmentStatus.ACTIVE },
       { status: AssignmentStatus.COMPLETED, endDate: new Date().toISOString().split('T')[0] },
@@ -388,6 +406,48 @@ export class WorkersService {
       ipAddress: ip,
     });
 
-    return { message: `Worker ${worker.workerCode} has been deactivated` };
+    return {
+      message: `Worker ${worker.workerCode} has been deactivated`,
+      worker: await this.findOne(id, user),
+    };
+  }
+
+  async reactivate(id: string, user: any, ip?: string) {
+    if (user.role !== Role.ADMIN) {
+      throw new ForbiddenException('Only Administrators can reactivate inactive workers');
+    }
+
+    const worker = await this.workerRepo.findOne({
+      where: { id },
+      relations: ['department', 'skillCategory'],
+    });
+
+    if (!worker) {
+      throw new NotFoundException('Worker not found');
+    }
+
+    if (worker.status === WorkerStatus.ACTIVE) {
+      throw new BadRequestException(`Worker ${worker.workerCode} is already active`);
+    }
+
+    // Reactivate existing record (never duplicate)
+    worker.status = WorkerStatus.ACTIVE;
+    await this.workerRepo.save(worker);
+
+    await this.activityLogsService.log({
+      userId: user.id,
+      userEmail: user.email,
+      userRole: user.role,
+      action: 'WORKER_REACTIVATED',
+      entityType: 'Worker',
+      entityId: id,
+      changeDetails: { previousStatus: WorkerStatus.INACTIVE, newStatus: WorkerStatus.ACTIVE },
+      ipAddress: ip,
+    });
+
+    return {
+      message: `Worker ${worker.workerCode} has been reactivated successfully`,
+      worker: await this.findOne(id, user),
+    };
   }
 }

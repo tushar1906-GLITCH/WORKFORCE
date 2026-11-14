@@ -10,23 +10,10 @@ import * as bcrypt from 'bcrypt';
 import { User, SupervisorSite, WorkSite } from '../database/entities';
 import { Role } from '../common/enums';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto, ChangeUserStatusDto } from './dto/update-user.dto';
 
-export class CreateUserDto {
-  fullName: string;
-  email: string;
-  password?: string;
-  role: Role;
-  assignedSiteIds?: string[];
-}
-
-export class UpdateUserDto {
-  fullName?: string;
-  email?: string;
-  password?: string;
-  role?: Role;
-  isActive?: boolean;
-  assignedSiteIds?: string[];
-}
+export { CreateUserDto, UpdateUserDto, ChangeUserStatusDto };
 
 @Injectable()
 export class UsersService {
@@ -142,7 +129,12 @@ export class UsersService {
 
     if (dto.fullName) user.fullName = dto.fullName;
     if (dto.role) user.role = dto.role;
-    if (typeof dto.isActive === 'boolean') user.isActive = dto.isActive;
+    if (typeof dto.isActive === 'boolean') {
+      if (user.id === currentAdmin.id && !dto.isActive) {
+        throw new BadRequestException('Administrators cannot deactivate their own user account.');
+      }
+      user.isActive = dto.isActive;
+    }
 
     if (dto.password && dto.password.trim().length >= 6) {
       user.passwordHash = await bcrypt.hash(dto.password, 10);
@@ -177,5 +169,35 @@ export class UsersService {
     });
 
     return this.findOne(user.id);
+  }
+
+  async setStatus(id: string, isActive: boolean, currentAdmin: any, ipAddress?: string) {
+    const user = await this.userRepo.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.id === currentAdmin.id && !isActive) {
+      throw new BadRequestException('Administrators cannot deactivate their own user account.');
+    }
+
+    user.isActive = isActive;
+    await this.userRepo.save(user);
+
+    await this.activityLogsService.log({
+      userId: currentAdmin.id,
+      userEmail: currentAdmin.email,
+      userRole: currentAdmin.role,
+      action: isActive ? 'USER_ACTIVATED' : 'USER_DEACTIVATED',
+      entityType: 'User',
+      entityId: user.id,
+      changeDetails: { isActive },
+      ipAddress,
+    });
+
+    return {
+      message: `User account has been ${isActive ? 'activated' : 'deactivated'} successfully.`,
+      user: await this.findOne(user.id),
+    };
   }
 }

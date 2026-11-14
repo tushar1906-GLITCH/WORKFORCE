@@ -103,10 +103,23 @@ export const PaymentsPage = () => {
 
   const handleRecordPayment = async (e) => {
     e.preventDefault();
+    const amountNum = parseFloat(paymentForm.amount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      showToast('Payment amount must be greater than zero', 'error');
+      return;
+    }
+    if (selectedUnpaidItem && amountNum > selectedUnpaidItem.remainingBalance + 0.001) {
+      showToast(`Payment cannot exceed outstanding balance of ₹${selectedUnpaidItem.remainingBalance.toFixed(2)}`, 'error');
+      return;
+    }
+
     setSubmitting(true);
     try {
-      await apiClient.post('/payments', paymentForm);
-      showToast('Payment disbursement recorded successfully!', 'success');
+      const res = await apiClient.post('/payments', paymentForm);
+      showToast(
+        `Disbursement of ₹${amountNum.toFixed(2)} recorded successfully! (${res.paymentStatus === 'PAID' ? 'Fully Settled' : 'Partial Settlement'})`,
+        'success',
+      );
       setDisburseModalOpen(false);
       fetchPaymentsData();
     } catch (err) {

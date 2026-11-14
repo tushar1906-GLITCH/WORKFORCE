@@ -5,18 +5,12 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
-import { PayrollPayment, PayrollItem } from '../database/entities';
-import { PaymentMethod, PaymentStatus } from '../common/enums';
+import { PayrollPayment, PayrollItem, PayrollRun, Worker } from '../database/entities';
+import { PaymentMethod, PaymentStatus, PayrollStatus } from '../common/enums';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
+import { CreatePaymentDto } from './dto/create-payment.dto';
 
-export interface CreatePaymentDto {
-  payrollItemId: string;
-  amount: string;
-  paymentMethod: PaymentMethod;
-  paymentDate: string;
-  paymentReference?: string;
-  remarks?: string;
-}
+export { CreatePaymentDto };
 
 @Injectable()
 export class PaymentsService {
@@ -56,12 +50,10 @@ export class PaymentsService {
     await queryRunner.startTransaction();
 
     try {
-      // Lock payroll item for update to prevent concurrent overpayments
+      // 1. Lock the required payroll item INDEPENDENTLY (avoiding FOR UPDATE on nullable outer joins)
       const item = await queryRunner.manager
         .createQueryBuilder(PayrollItem, 'item')
         .setLock('pessimistic_write')
-        .leftJoinAndSelect('item.payments', 'payment')
-        .leftJoinAndSelect('item.worker', 'worker')
         .where('item.id = :id', { id: dto.payrollItemId })
         .getOne();
 
@@ -69,39 +61,72 @@ export class PaymentsService {
         throw new NotFoundException('Payroll line item not found');
       }
 
-      const totalPaidSoFar = item.payments.reduce(
-        (sum, p) => sum + parseFloat(p.amount),
-        0,
-      );
-      const netPay = parseFloat(item.netPay);
-      const outstandingBalance = Math.max(0, netPay - totalPaidSoFar);
-
-      if (paymentAmount > outstandingBalance + 0.001) {
+      // 2. Verify associated payroll run is APPROVED
+      const payrollRun = await queryRunner.manager.findOne(PayrollRun, {
+        where: { id: item.payrollRunId },
+      });
+      if (!payrollRun) {
+        throw new NotFoundException('Associated payroll run not found');
+      }
+      if (payrollRun.status !== PayrollStatus.APPROVED) {
         throw new BadRequestException(
-          `Payment amount (₹${paymentAmount.toFixed(2)}) exceeds remaining payable balance (₹${outstandingBalance.toFixed(2)})`,
+          `Payments can only be disbursed against an APPROVED payroll run (current run status: ${payrollRun.status})`,
         );
       }
 
+      // 3. Fetch worker details for audit logging
+      const worker = await queryRunner.manager.findOne(Worker, {
+        where: { id: item.workerId },
+      });
+
+      // 4. Fetch existing payments within the transaction for exact balance calculation
+      const existingPayments = await queryRunner.manager.find(PayrollPayment, {
+        where: { payrollItemId: item.id },
+      });
+
+      // 5. Decimal-safe integer cents / paise calculations
+      const netPayCents = Math.round(Number(item.netPay) * 100);
+      const totalPaidCents = existingPayments.reduce(
+        (sum, p) => sum + Math.round(Number(p.amount) * 100),
+        0,
+      );
+      const outstandingCents = Math.max(0, netPayCents - totalPaidCents);
+      const paymentCents = Math.round(paymentAmount * 100);
+
+      if (paymentCents <= 0) {
+        throw new BadRequestException('Payment amount must be greater than zero');
+      }
+
+      if (paymentCents > outstandingCents) {
+        const remainingFormatted = (outstandingCents / 100).toFixed(2);
+        const requestedFormatted = (paymentCents / 100).toFixed(2);
+        throw new BadRequestException(
+          `Payment amount (₹${requestedFormatted}) exceeds remaining payable balance (₹${remainingFormatted})`,
+        );
+      }
+
+      // 6. Record payment
       const payment = queryRunner.manager.create(PayrollPayment, {
-        payrollItemId: dto.payrollItemId,
-        amount: paymentAmount.toFixed(2),
+        payrollItemId: item.id,
+        amount: (paymentCents / 100).toFixed(2),
         paymentMethod: dto.paymentMethod,
         paymentDate: dto.paymentDate,
-        paymentReference: dto.paymentReference || null,
-        remarks: dto.remarks || null,
+        paymentReference: dto.paymentReference?.trim() || null,
+        remarks: dto.remarks?.trim() || null,
         recordedBy: admin.id,
       });
       const savedPayment = await queryRunner.manager.save(payment);
 
-      // Update item payment status
-      const newTotalPaid = totalPaidSoFar + paymentAmount;
-      if (newTotalPaid >= netPay - 0.01) {
+      // 7. Update payroll item payment status
+      const newTotalPaidCents = totalPaidCents + paymentCents;
+      if (newTotalPaidCents >= netPayCents) {
         item.paymentStatus = PaymentStatus.PAID;
       } else {
         item.paymentStatus = PaymentStatus.PARTIALLY_PAID;
       }
       await queryRunner.manager.save(item);
 
+      // 8. Commit atomic transaction
       await queryRunner.commitTransaction();
 
       await this.activityLogsService.log({
@@ -112,15 +137,22 @@ export class PaymentsService {
         entityType: 'PayrollPayment',
         entityId: savedPayment.id,
         changeDetails: {
-          workerCode: item.worker.workerCode,
+          workerCode: worker?.workerCode || 'UNKNOWN',
+          workerName: worker?.fullName || 'UNKNOWN',
           amount: savedPayment.amount,
           method: savedPayment.paymentMethod,
+          reference: savedPayment.paymentReference,
           newStatus: item.paymentStatus,
+          remainingBalance: Math.max(0, (netPayCents - newTotalPaidCents) / 100).toFixed(2),
         },
         ipAddress: ip,
       });
 
-      return savedPayment;
+      return {
+        ...savedPayment,
+        outstandingBalance: Math.max(0, (netPayCents - newTotalPaidCents) / 100).toFixed(2),
+        paymentStatus: item.paymentStatus,
+      };
     } catch (err) {
       await queryRunner.rollbackTransaction();
       throw err;

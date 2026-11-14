@@ -75,6 +75,12 @@ export class AttendanceService {
       await this.checkSupervisorAccess(user.id, workSiteId);
     }
 
+    const site = await this.siteRepo.findOne({ where: { id: workSiteId } });
+    if (!site) throw new NotFoundException('Work location not found');
+    if (site.status === 'INACTIVE') {
+      throw new BadRequestException(`Cannot retrieve attendance: Work location "${site.name}" is inactive`);
+    }
+
     // 1. Find all active assignments for this site on this date (and shift if given)
     const waQb = this.waRepo
       .createQueryBuilder('wa')
@@ -171,6 +177,12 @@ export class AttendanceService {
   async markBulk(dto: BulkAttendanceDto, user: any, ip?: string) {
     if (user.role === Role.SUPERVISOR) {
       await this.checkSupervisorAccess(user.id, dto.workSiteId);
+    }
+
+    const site = await this.siteRepo.findOne({ where: { id: dto.workSiteId } });
+    if (!site) throw new NotFoundException('Work location not found');
+    if (site.status === 'INACTIVE') {
+      throw new BadRequestException(`Cannot record attendance: Work location "${site.name}" is inactive`);
     }
 
     if (!dto.records || dto.records.length === 0) {

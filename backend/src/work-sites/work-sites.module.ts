@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { WorkSite, SupervisorSite, WorkerAssignment } from '../database/entities';
+import { WorkSite, SupervisorSite, WorkerAssignment, Attendance } from '../database/entities';
 import { WorkSitesService } from './work-sites.service';
 import { WorkSitesController } from './work-sites.controller';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([WorkSite, SupervisorSite, WorkerAssignment])],
+  imports: [TypeOrmModule.forFeature([WorkSite, SupervisorSite, WorkerAssignment, Attendance])],
   controllers: [WorkSitesController],
   providers: [WorkSitesService],
   exports: [WorkSitesService],

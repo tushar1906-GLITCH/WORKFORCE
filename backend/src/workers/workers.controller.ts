@@ -10,9 +10,11 @@ import {
   Ip,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
-import { WorkersService, CreateWorkerDto, WorkerQueryDto } from './workers.service';
+import { WorkersService, CreateWorkerDto, UpdateWorkerDto, WorkerQueryDto } from './workers.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles } from '../common/decorators/roles.decorator';
+import { Role } from '../common/enums';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @ApiTags('Workers')
@@ -72,7 +74,7 @@ export class WorkersController {
   @ApiOperation({ summary: 'Update worker details' })
   async update(
     @Param('id') id: string,
-    @Body() dto: any,
+    @Body() dto: UpdateWorkerDto,
     @CurrentUser() user: any,
     @Ip() ip: string,
   ) {
@@ -87,5 +89,16 @@ export class WorkersController {
     @Ip() ip: string,
   ) {
     return this.service.deactivate(id, user, ip);
+  }
+
+  @Patch(':id/reactivate')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Reactivate an inactive worker (Admin only)' })
+  async reactivate(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+    @Ip() ip: string,
+  ) {
+    return this.service.reactivate(id, user, ip);
   }
 }

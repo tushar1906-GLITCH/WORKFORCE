@@ -57,7 +57,7 @@ export const AttendancePage = () => {
     const loadInitial = async () => {
       try {
         const [sitesData, shiftsData] = await Promise.all([
-          apiClient.get('/sites'),
+          apiClient.get('/sites', { params: { status: 'ACTIVE' } }),
           apiClient.get('/shifts'),
         ]);
         setSites(sitesData);

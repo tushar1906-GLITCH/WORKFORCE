@@ -56,13 +56,14 @@ export const AssignmentsPage = () => {
     const loadDropdowns = async () => {
       try {
         const [sitesData, shiftsData, workersData] = await Promise.all([
-          apiClient.get('/sites'),
+          apiClient.get('/sites', { params: { status: 'ACTIVE' } }),
           apiClient.get('/shifts'),
           apiClient.get('/workers', { params: { limit: 100 } }),
         ]);
         setSites(sitesData);
         setShifts(shiftsData);
-        setWorkers(workersData.items || []);
+        const activeWorkers = (workersData.items || []).filter((w) => w.status === 'ACTIVE');
+        setWorkers(activeWorkers);
 
         if (sitesData.length > 0) {
           setNewAssignment((prev) => ({ ...prev, workSiteId: sitesData[0].id }));

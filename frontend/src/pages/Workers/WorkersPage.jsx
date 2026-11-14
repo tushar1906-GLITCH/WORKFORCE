@@ -18,7 +18,12 @@ import {
   Mail,
   MapPin,
   Calendar,
+  Edit2,
+  UserCheck,
+  UserX,
 } from 'lucide-react';
+
+const INDIAN_PHONE_REGEX = /^[6-9]\d{9}$/;
 
 export const WorkersPage = () => {
   const { user, isAdmin } = useAuth();
@@ -42,7 +47,7 @@ export const WorkersPage = () => {
   const [skills, setSkills] = useState([]);
   const [sites, setSites] = useState([]);
 
-  // Modal
+  // Create Modal
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [newWorker, setNewWorker] = useState({
     fullName: '',
@@ -58,15 +63,23 @@ export const WorkersPage = () => {
     wageType: 'DAILY',
     wageRate: '800.00',
   });
+  const [phoneError, setPhoneError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Edit Modal
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingWorker, setEditingWorker] = useState(null);
+  const [editPhoneError, setEditPhoneError] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
 
   useEffect(() => {
     const loadDropdowns = async () => {
       try {
+        // Bug Fix 3: Operational dropdown only loads ACTIVE work locations
         const [d, s, ws] = await Promise.all([
           apiClient.get('/departments'),
           apiClient.get('/skills'),
-          apiClient.get('/sites'),
+          apiClient.get('/sites', { params: { status: 'ACTIVE' } }),
         ]);
         setDepartments(d);
         setSkills(s);
@@ -75,7 +88,7 @@ export const WorkersPage = () => {
           setNewWorker((prev) => ({ ...prev, workSiteId: ws[0].id }));
         }
       } catch (err) {
-        console.error(err);
+        console.error('Failed to load form options:', err);
       }
     };
     loadDropdowns();
@@ -114,8 +127,26 @@ export const WorkersPage = () => {
     fetchWorkers();
   };
 
+  // Bug Fix 1: Phone validation handler for new worker
+  const handlePhoneChange = (val) => {
+    const clean = val.replace(/\s+/g, '');
+    setNewWorker((prev) => ({ ...prev, phone: clean }));
+    if (!clean) {
+      setPhoneError('Phone number is required');
+    } else if (!INDIAN_PHONE_REGEX.test(clean)) {
+      setPhoneError('Must be a 10-digit Indian mobile number starting with 6, 7, 8, or 9');
+    } else {
+      setPhoneError('');
+    }
+  };
+
   const handleCreateWorker = async (e) => {
     e.preventDefault();
+    if (!INDIAN_PHONE_REGEX.test(newWorker.phone)) {
+      setPhoneError('Must be a 10-digit Indian mobile number starting with 6, 7, 8, or 9');
+      return;
+    }
+
     setSubmitting(true);
     try {
       await apiClient.post('/workers', newWorker);
@@ -135,11 +166,89 @@ export const WorkersPage = () => {
         wageType: 'DAILY',
         wageRate: '800.00',
       });
+      setPhoneError('');
       fetchWorkers();
     } catch (err) {
       showToast(err.message, 'error');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // Edit worker handler
+  const openEditModal = (w) => {
+    setEditingWorker({
+      id: w.id,
+      workerCode: w.workerCode,
+      fullName: w.fullName,
+      phone: w.phone,
+      email: w.email || '',
+      address: w.address,
+      departmentId: w.department?.id || '',
+      skillCategoryId: w.skillCategory?.id || '',
+      employmentType: w.employmentType || 'DAILY_WAGE',
+      emergencyContact: w.emergencyContact || '',
+    });
+    setEditPhoneError('');
+    setEditModalOpen(true);
+  };
+
+  // Bug Fix 1: Phone validation handler for editing worker
+  const handleEditPhoneChange = (val) => {
+    const clean = val.replace(/\s+/g, '');
+    setEditingWorker((prev) => ({ ...prev, phone: clean }));
+    if (!clean) {
+      setEditPhoneError('Phone number is required');
+    } else if (!INDIAN_PHONE_REGEX.test(clean)) {
+      setEditPhoneError('Must be a 10-digit Indian mobile number starting with 6, 7, 8, or 9');
+    } else {
+      setEditPhoneError('');
+    }
+  };
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    if (editingWorker.phone && !INDIAN_PHONE_REGEX.test(editingWorker.phone)) {
+      setEditPhoneError('Must be a 10-digit Indian mobile number starting with 6, 7, 8, or 9');
+      return;
+    }
+
+    setSavingEdit(true);
+    try {
+      await apiClient.patch(`/workers/${editingWorker.id}`, {
+        fullName: editingWorker.fullName,
+        phone: editingWorker.phone,
+        email: editingWorker.email || undefined,
+        address: editingWorker.address,
+        departmentId: editingWorker.departmentId || undefined,
+        skillCategoryId: editingWorker.skillCategoryId || undefined,
+        employmentType: editingWorker.employmentType,
+        emergencyContact: editingWorker.emergencyContact || undefined,
+      });
+      showToast('Worker information updated successfully!', 'success');
+      setEditModalOpen(false);
+      fetchWorkers();
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  // Bug Fix 2: Reactivate / Deactivate workers
+  const handleToggleStatus = async (worker) => {
+    const isActivating = worker.status === 'INACTIVE';
+    try {
+      if (isActivating) {
+        await apiClient.patch(`/workers/${worker.id}/reactivate`);
+        showToast(`Worker ${worker.workerCode} has been reactivated successfully!`, 'success');
+      } else {
+        await apiClient.patch(`/workers/${worker.id}/deactivate`);
+        showToast(`Worker ${worker.workerCode} has been deactivated.`, 'success');
+      }
+      fetchWorkers();
+    } catch (err) {
+      showToast(err.message, 'error');
     }
   };
 
@@ -154,7 +263,10 @@ export const WorkersPage = () => {
         </div>
 
         <button
-          onClick={() => setCreateModalOpen(true)}
+          onClick={() => {
+            setPhoneError('');
+            setCreateModalOpen(true);
+          }}
           className="btn btn-primary"
         >
           <Plus size={16} /> Register New Worker
@@ -269,7 +381,7 @@ export const WorkersPage = () => {
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <Phone size={13} color="var(--text-muted)" />
-                      <span>{w.phone}</span>
+                      <span style={{ fontFamily: 'var(--font-mono)' }}>{w.phone}</span>
                     </div>
                   </td>
                   <td>{w.department?.name || '—'}</td>
@@ -295,12 +407,45 @@ export const WorkersPage = () => {
                     <StatusBadge status={w.status} />
                   </td>
                   <td style={{ textAlign: 'right' }}>
-                    <button
-                      onClick={() => navigate(`/workers/${w.id}`)}
-                      className="btn btn-secondary btn-sm"
-                    >
-                      <Eye size={14} /> View Details
-                    </button>
+                    <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
+                      <button
+                        onClick={() => navigate(`/workers/${w.id}`)}
+                        className="btn btn-secondary btn-sm"
+                        title="View Details"
+                      >
+                        <Eye size={14} /> View
+                      </button>
+
+                      <button
+                        onClick={() => openEditModal(w)}
+                        className="btn btn-secondary btn-sm"
+                        title="Edit Details"
+                      >
+                        <Edit2 size={14} /> Edit
+                      </button>
+
+                      {/* Bug Fix 2: Reactivate / Deactivate Action */}
+                      {w.status === 'ACTIVE' ? (
+                        <button
+                          onClick={() => handleToggleStatus(w)}
+                          className="btn btn-outline btn-sm"
+                          style={{ color: 'var(--danger)', borderColor: 'var(--danger-border)' }}
+                          title="Deactivate worker"
+                        >
+                          <UserX size={14} /> Deactivate
+                        </button>
+                      ) : (
+                        isAdmin && (
+                          <button
+                            onClick={() => handleToggleStatus(w)}
+                            className="btn btn-primary btn-sm"
+                            title="Reactivate worker"
+                          >
+                            <UserCheck size={14} /> Reactivate
+                          </button>
+                        )
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -333,7 +478,7 @@ export const WorkersPage = () => {
             <button
               onClick={handleCreateWorker}
               className="btn btn-primary"
-              disabled={submitting || !newWorker.fullName || !newWorker.phone || !newWorker.address}
+              disabled={submitting || !newWorker.fullName || !newWorker.phone || !newWorker.address || !!phoneError}
             >
               {submitting ? 'Registering...' : 'Complete Registration'}
             </button>
@@ -355,15 +500,25 @@ export const WorkersPage = () => {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Phone Number *</label>
+              <label className="form-label">Phone Number * (10 Digits)</label>
               <input
-                type="text"
+                type="tel"
+                maxLength={10}
                 className="form-control"
-                placeholder="+91 98450 11001"
+                style={{
+                  borderColor: phoneError ? 'var(--danger)' : undefined,
+                  backgroundColor: phoneError ? 'rgba(239, 68, 68, 0.05)' : undefined,
+                }}
+                placeholder="9845011001"
                 value={newWorker.phone}
-                onChange={(e) => setNewWorker({ ...newWorker, phone: e.target.value })}
+                onChange={(e) => handlePhoneChange(e.target.value)}
                 required
               />
+              {phoneError && (
+                <div style={{ color: 'var(--danger)', fontSize: '0.78rem', marginTop: '4px' }}>
+                  {phoneError}
+                </div>
+              )}
             </div>
           </div>
 
@@ -396,7 +551,7 @@ export const WorkersPage = () => {
             <textarea
               className="form-control"
               rows={2}
-              placeholder="Full residential address..."
+              placeholder="Full residential address, village, or labour camp block"
               value={newWorker.address}
               onChange={(e) => setNewWorker({ ...newWorker, address: e.target.value })}
               required
@@ -435,7 +590,7 @@ export const WorkersPage = () => {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
             <div className="form-group">
-              <label className="form-label">Employment Type</label>
+              <label className="form-label">Employment Classification</label>
               <select
                 className="form-control"
                 value={newWorker.employmentType}
@@ -449,47 +604,197 @@ export const WorkersPage = () => {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Initial Assigned Work Site</label>
+              <label className="form-label">Initial Assigned Work Site (Active Only)</label>
               <select
                 className="form-control"
                 value={newWorker.workSiteId}
                 onChange={(e) => setNewWorker({ ...newWorker, workSiteId: e.target.value })}
               >
-                {sites.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
+                <option value="">Select Site (Optional)</option>
+                {sites.map((ws) => (
+                  <option key={ws.id} value={ws.id}>{ws.name}</option>
                 ))}
               </select>
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-            <div className="form-group">
-              <label className="form-label">Wage Type</label>
-              <select
-                className="form-control"
-                value={newWorker.wageType}
-                onChange={(e) => setNewWorker({ ...newWorker, wageType: e.target.value })}
+          {isAdmin && (
+            <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '14px', marginTop: '10px' }}>
+              <h4 style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', marginBottom: '10px' }}>
+                Initial Wage Rate Configuration
+              </h4>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                <div className="form-group">
+                  <label className="form-label">Wage Type</label>
+                  <select
+                    className="form-control"
+                    value={newWorker.wageType}
+                    onChange={(e) => setNewWorker({ ...newWorker, wageType: e.target.value })}
+                  >
+                    <option value="DAILY">Daily Rate (₹/day)</option>
+                    <option value="HOURLY">Hourly Rate (₹/hr)</option>
+                    <option value="MONTHLY">Monthly Fixed (₹/mo)</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Wage Rate Amount (₹)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="form-control"
+                    placeholder="800.00"
+                    value={newWorker.wageRate}
+                    onChange={(e) => setNewWorker({ ...newWorker, wageRate: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </form>
+      </Modal>
+
+      {/* Edit Worker Modal */}
+      {editingWorker && (
+        <Modal
+          isOpen={editModalOpen}
+          onClose={() => setEditModalOpen(false)}
+          title={`Edit Worker — ${editingWorker.workerCode}`}
+          maxWidth="600px"
+          footer={
+            <>
+              <button
+                onClick={() => setEditModalOpen(false)}
+                className="btn btn-secondary"
+                disabled={savingEdit}
               >
-                <option value="DAILY">Daily Rate (₹/day)</option>
-                <option value="HOURLY">Hourly Rate (₹/hr)</option>
-                <option value="MONTHLY">Monthly Salary (₹/month)</option>
-              </select>
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                className="btn btn-primary"
+                disabled={savingEdit || !editingWorker.fullName || !!editPhoneError}
+              >
+                {savingEdit ? 'Saving Changes...' : 'Save Worker Details'}
+              </button>
+            </>
+          }
+        >
+          <form onSubmit={handleSaveEdit}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+              <div className="form-group">
+                <label className="form-label">Full Name *</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={editingWorker.fullName}
+                  onChange={(e) => setEditingWorker({ ...editingWorker, fullName: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Phone Number * (10 Digits)</label>
+                <input
+                  type="tel"
+                  maxLength={10}
+                  className="form-control"
+                  style={{
+                    borderColor: editPhoneError ? 'var(--danger)' : undefined,
+                    backgroundColor: editPhoneError ? 'rgba(239, 68, 68, 0.05)' : undefined,
+                  }}
+                  value={editingWorker.phone}
+                  onChange={(e) => handleEditPhoneChange(e.target.value)}
+                  required
+                />
+                {editPhoneError && (
+                  <div style={{ color: 'var(--danger)', fontSize: '0.78rem', marginTop: '4px' }}>
+                    {editPhoneError}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+              <div className="form-group">
+                <label className="form-label">Email Address</label>
+                <input
+                  type="email"
+                  className="form-control"
+                  value={editingWorker.email}
+                  onChange={(e) => setEditingWorker({ ...editingWorker, email: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Emergency Contact</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Contact Name & Number"
+                  value={editingWorker.emergencyContact}
+                  onChange={(e) => setEditingWorker({ ...editingWorker, emergencyContact: e.target.value })}
+                />
+              </div>
             </div>
 
             <div className="form-group">
-              <label className="form-label">Applicable Rate (₹)</label>
-              <input
-                type="number"
-                step="0.01"
+              <label className="form-label">Residential Address</label>
+              <textarea
                 className="form-control"
-                placeholder="800.00"
-                value={newWorker.wageRate}
-                onChange={(e) => setNewWorker({ ...newWorker, wageRate: e.target.value })}
+                rows={2}
+                value={editingWorker.address}
+                onChange={(e) => setEditingWorker({ ...editingWorker, address: e.target.value })}
+                required
               />
             </div>
-          </div>
-        </form>
-      </Modal>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+              <div className="form-group">
+                <label className="form-label">Department</label>
+                <select
+                  className="form-control"
+                  value={editingWorker.departmentId}
+                  onChange={(e) => setEditingWorker({ ...editingWorker, departmentId: e.target.value })}
+                >
+                  <option value="">Select Department</option>
+                  {departments.map((d) => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Skill Category</label>
+                <select
+                  className="form-control"
+                  value={editingWorker.skillCategoryId}
+                  onChange={(e) => setEditingWorker({ ...editingWorker, skillCategoryId: e.target.value })}
+                >
+                  <option value="">Select Skill</option>
+                  {skills.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Employment Classification</label>
+              <select
+                className="form-control"
+                value={editingWorker.employmentType}
+                onChange={(e) => setEditingWorker({ ...editingWorker, employmentType: e.target.value })}
+              >
+                <option value="DAILY_WAGE">Daily Wage</option>
+                <option value="CONTRACT">Contract</option>
+                <option value="FULL_TIME">Full Time</option>
+                <option value="PART_TIME">Part Time</option>
+              </select>
+            </div>
+          </form>
+        </Modal>
+      )}
     </div>
   );
 };

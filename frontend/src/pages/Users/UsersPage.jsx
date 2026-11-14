@@ -62,9 +62,17 @@ export const UsersPage = () => {
   };
 
   const handleToggleActive = async (targetUser) => {
+    const newStatus = !targetUser.isActive;
     try {
-      await apiClient.patch(`/users/${targetUser.id}`, { isActive: !targetUser.isActive });
-      showToast(`User ${targetUser.isActive ? 'deactivated' : 'activated'} successfully!`, 'success');
+      await apiClient.patch(`/users/${targetUser.id}/status`, { isActive: newStatus });
+      showToast(
+        `User ${targetUser.fullName} has been ${newStatus ? 'reactivated' : 'deactivated'} successfully!`,
+        'success',
+      );
+      // Immediately reflect state change
+      setUsers((prev) =>
+        prev.map((u) => (u.id === targetUser.id ? { ...u, isActive: newStatus } : u)),
+      );
       fetchUsers();
     } catch (err) {
       showToast(err.message, 'error');
@@ -150,10 +158,13 @@ export const UsersPage = () => {
                     {u.id !== user?.id && (
                       <button
                         onClick={() => handleToggleActive(u)}
-                        className={`btn btn-sm ${u.isActive ? 'btn-outline' : 'btn-secondary'}`}
-                        style={{ color: u.isActive ? 'var(--danger)' : 'var(--success)' }}
+                        className={`btn btn-sm ${u.isActive ? 'btn-outline' : 'btn-primary'}`}
+                        style={{
+                          color: u.isActive ? 'var(--danger)' : undefined,
+                          borderColor: u.isActive ? 'var(--danger-border)' : undefined,
+                        }}
                       >
-                        {u.isActive ? 'Deactivate' : 'Activate'}
+                        {u.isActive ? 'Deactivate' : 'Reactivate'}
                       </button>
                     )}
                   </td>

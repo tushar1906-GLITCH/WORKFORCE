@@ -9,7 +9,7 @@ import {
   Ip,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
-import { UsersService, CreateUserDto, UpdateUserDto } from './users.service';
+import { UsersService, CreateUserDto, UpdateUserDto, ChangeUserStatusDto } from './users.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -58,5 +58,17 @@ export class UsersController {
     @Ip() ip: string,
   ) {
     return this.service.update(id, dto, admin, ip);
+  }
+
+  @Patch(':id/status')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Change user active status (Admin only)' })
+  async setStatus(
+    @Param('id') id: string,
+    @Body() dto: ChangeUserStatusDto,
+    @CurrentUser() admin: any,
+    @Ip() ip: string,
+  ) {
+    return this.service.setStatus(id, dto.isActive, admin, ip);
   }
 }
