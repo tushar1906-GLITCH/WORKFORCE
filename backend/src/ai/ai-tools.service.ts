@@ -89,6 +89,10 @@ export class AiToolsService {
                 type: 'string',
                 description: 'ACTIVE or INACTIVE',
               },
+              unassigned: {
+                type: 'boolean',
+                description: 'Filter workers who have no active site assignment',
+              },
               limit: {
                 type: 'number',
                 description: 'Max results to return (default 10)',
@@ -425,7 +429,14 @@ export class AiToolsService {
       }
     }
 
-    if (effectiveSiteIds !== null) {
+    if (args.unassigned) {
+      qb.andWhere('wa.id IS NULL');
+      if (!args.status) {
+        qb.andWhere('w.status = :activeStatus', { activeStatus: WorkerStatus.ACTIVE });
+      }
+    }
+
+    if (effectiveSiteIds !== null && !args.unassigned) {
       if (effectiveSiteIds.length === 0) return [];
       qb.andWhere('wa.workSiteId IN (:...siteIds)', { siteIds: effectiveSiteIds });
     }
@@ -517,6 +528,7 @@ export class AiToolsService {
     let halfDayCount = 0;
     let notMarkedCount = 0;
 
+    const absentWorkersList: { workerCode: string; fullName: string; site: string; shift: string }[] = [];
     const recordWorkerIds = new Set<string>();
     const shiftStats: Record<string, { present: number; absent: number; halfDay: number; notMarked: number; total: number }> = {};
     const siteStats: Record<string, { present: number; absent: number; halfDay: number; notMarked: number; total: number }> = {};
@@ -540,6 +552,12 @@ export class AiToolsService {
         absentCount++;
         shiftStats[sName].absent++;
         siteStats[siteName].absent++;
+        absentWorkersList.push({
+          workerCode: r.worker?.workerCode || 'N/A',
+          fullName: r.worker?.fullName || 'Unknown',
+          site: siteName,
+          shift: sName,
+        });
       } else if (r.status === AttendanceStatus.HALF_DAY) {
         halfDayCount++;
         shiftStats[sName].halfDay++;
@@ -578,6 +596,7 @@ export class AiToolsService {
       attendanceRate: `${attendanceRate}%`,
       shiftBreakdown: shiftStats,
       siteBreakdown: siteStats,
+      absentWorkers: absentWorkersList,
       filteredBySite: resolvedSite ? resolvedSite.name : 'All authorized sites',
       error: undefined,
     };
