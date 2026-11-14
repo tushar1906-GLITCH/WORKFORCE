@@ -163,10 +163,14 @@ cd backend
 npm test
 ```
 
-Test coverage includes:
-- Role-based and site-scoped access control guards.
-- Attendance rules: Not Marked enforcement, Mark All Present non-destructive behaviour, completion rate calculation.
-- Payroll calculation engine: Daily, Hourly, Monthly, Overtime multiplier, and overpayment prevention.
+Test coverage includes 7 test suites (37 automated tests):
+- **Worker Phone Validation & Lifecycle:** Regex `^[6-9]\d{9}$` validation, invalid digit rejection, class-validator DTO enforcement, worker reactivation workflow, and historical audit trail preservation.
+- **Work Locations & Operational Scoping:** Inactive work site filtering from assignment and attendance dropdowns, safe deactivation with worker warning, deletion protection when historical records exist, and reactivation.
+- **Payroll Disbursement & Locking:** Pessimistic write lock query without outer joins, decimal-safe integer paise/cents balance calculations, partial payments, and overpayment prevention.
+- **Supervisor Status & Access Guards:** DTO property whitelisting, Admin status toggling, immediate login rejection for inactive accounts, and JWT strategy active user verification.
+- **Attendance Rules:** Not Marked enforcement, Mark All Present non-destructive behaviour, completion rate calculation.
+- **Payroll Calculation Engine:** Daily, Hourly, Monthly, Overtime multiplier, and net salary verification.
+- **Authentication & Authorization:** Role-based access control, supervisor site-scoping guards.
 
 ---
 
