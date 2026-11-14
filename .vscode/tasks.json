@@ -4,11 +4,22 @@
     {
       "label": "1. Start PostgreSQL Database",
       "type": "shell",
-      "command": "& 'C:\\Program Files\\PostgreSQL\\18\\bin\\pg_ctl.exe' -D 'C:\\Users\\TUSHAR\\.gemini\\antigravity\\scratch\\pgdata' start",
-      "problemMatcher": [],
+      "command": "if (Test-Path 'C:\\Users\\TUSHAR\\.gemini\\antigravity\\scratch\\pgdata\\postmaster.pid') { Remove-Item 'C:\\Users\\TUSHAR\\.gemini\\antigravity\\scratch\\pgdata\\postmaster.pid' -Force }; & 'C:\\Program Files\\PostgreSQL\\18\\bin\\postgres.exe' -D 'C:\\Users\\TUSHAR\\.gemini\\antigravity\\scratch\\pgdata'",
+      "isBackground": true,
+      "problemMatcher": {
+        "pattern": {
+          "regexp": "^$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*starting PostgreSQL.*",
+          "endsPattern": ".*database system is ready to accept connections.*"
+        }
+      },
       "presentation": {
         "reveal": "always",
-        "panel": "dedicated"
+        "panel": "dedicated",
+        "group": "servers"
       }
     },
     {
