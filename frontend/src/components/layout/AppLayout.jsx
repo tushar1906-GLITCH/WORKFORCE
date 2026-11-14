@@ -3,6 +3,7 @@ import { Outlet, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import FloatingAiChat from '../ai/FloatingAiChat';
 
 export const AppLayout = () => {
   const { isAuthenticated, loading } = useAuth();
@@ -38,6 +39,7 @@ export const AppLayout = () => {
           <Outlet />
         </main>
       </div>
+      <FloatingAiChat />
     </div>
   );
 };

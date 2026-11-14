@@ -1,12 +1,59 @@
-# WorkForce — Labour & Workforce Management System
+# WorkForce 2.0 — AI-Powered Enterprise Labour & Workforce Management System
 
-A centralized enterprise web application engineered for construction companies, manufacturing plants, logistics warehouses, and labour contractors to manage workers, site-scoped supervisor operations, individual-first attendance, leave approvals, wage history, payroll generation, and audit logging.
+A centralized enterprise web application engineered for construction companies, manufacturing plants, logistics warehouses, and labour contractors to manage workers, site-scoped supervisor operations, individual-first attendance, leave approvals, wage history, payroll generation, audit logging, and **generative AI-powered operational intelligence**.
 
-Built with **React**, **Vite**, **NestJS**, **TypeORM**, and **PostgreSQL**.
+Built with **React**, **Vite**, **NestJS**, **TypeORM**, **PostgreSQL**, and **Groq (Llama 3.3 70B / Llama 3.1 8B)**.
 
 ---
 
-## 1. System Architecture & Features
+## 1. WorkForce 2.0 Upgrades & Intelligence Layer
+
+### 1.1 Groq-Powered AI Assistant (Database-Connected)
+- **Live PostgreSQL Tools:** The AI Assistant connects directly to PostgreSQL using 8 controlled, parameterized TypeORM query tools. AI never executes raw SQL.
+  - `get_workforce_summary`: Active/inactive workforce counts, department distributions, site deployments, and unassigned workers.
+  - `search_workers`: Search profiles by code, name, phone, department, or status.
+  - `get_attendance_summary`: Shift-wise and site-wise attendance counts, present/absent/half-day/not-marked, and strictly accurate attendance rate calculated against eligible scheduled workers.
+  - `get_worker_attendance_history`: 30-day chronological attendance logs for an individual worker.
+  - `get_leave_requests`: Filter pending, approved, or rejected leave requests by site or date.
+  - `get_payroll_summary`: Comprehensive gross expenditure, net pay, advance recoveries, and outstanding liabilities (ADMIN ONLY).
+  - `get_site_locations_and_staffing`: Operational locations, active worker counts, and supervisor assignments.
+  - `compare_attendance_dates`: Comparative analysis between two dates (e.g., yesterday vs today) with rate delta and trend indicators.
+- **Strict Role-Based Permission Boundaries:**
+  - **Admin:** Full organization-wide operational and financial queries.
+  - **Supervisor:** Scoped strictly to assigned sites. If a supervisor requests payroll or financial amounts, the system immediately returns: *"Access Denied: You do not have permission to view payroll or salary information."* If a supervisor requests unauthorized site data, it is rejected.
+- **Multi-Turn Chat History:** Thread persistence in `ai_conversations` and `ai_messages` tables.
+- **Dedicated Page (`/ai-assistant`) & Floating Widget:** Accessible anywhere via a bottom-right floating trigger button with markdown tables, code blocks, and suggestion chips.
+- **Deterministic Natural Language Query Engine Fallback:** If Groq API key is not configured or network timeout occurs, a built-in PostgreSQL query engine handles queries and formats live database metrics.
+
+### 1.2 AI Operations Command Center
+- Real-time operational intelligence banner on the Executive / Supervisor Dashboard.
+- Live telemetry synthesizing unfinalized attendance, pending leave approvals, unassigned active workers, and outstanding payroll reminders with one-click resolution shortcuts.
+
+### 1.3 Advanced Workforce & Site Performance Analytics
+- Multi-dimensional reports in `/reports`: Daily Attendance Ledger, Worker Directory & Roster, Work Location Performance & Comparison matrix, and Daily Operations Snapshot.
+- Side-by-side performance comparison across operational work locations.
+- Print / Save as PDF support with print styling.
+
+### 1.4 Smart Shift Scheduling & Conflict Detection
+- Real-time conflict detection in `/assignments`: alerts managers when an assigned worker is already actively deployed at another site or overlapping shift.
+- Smart recommendations highlighting available unassigned workers for instant assignment.
+
+### 1.5 Excel / CSV Bulk Worker Import
+- Modal in `/workers` allowing bulk CSV data pasting or file upload.
+- Pre-import validation preview checking 10-digit Indian phone numbers (`^[6-9]\d{9}$`), names, and wage rates with error highlighting.
+- Generates downloadable CSV template (`WorkForce_Worker_Import_Template.csv`).
+
+### 1.6 Worker Document Management & Expiry Tracking
+- Identity and compliance document storage (`worker_documents` table): Aadhaar, PAN, Voter ID, Labour Contracts, Trade Certificates, Medical Fitness.
+- Expiry date tracking with automatic warning badges (`EXPIRING SOON` within 30 days, `EXPIRED`).
+- Administrative verification workflow (`PENDING`, `VERIFIED`, `REJECTED`) with audit logging.
+
+### 1.7 Daily Operations Report & Executive AI Briefing
+- Integrated one-click executive AI summary generating daily operations briefings on attendance, shift coverage, and open compliance items.
+
+---
+
+## 2. Core System Architecture & Modules
 
 ### Core Modules
 1. **Executive & Site Dashboards**

@@ -22,6 +22,12 @@ import {
   Edit2,
   History,
   ShieldAlert,
+  FileText,
+  Upload,
+  CheckCircle2,
+  XCircle,
+  Trash2,
+  AlertCircle,
 } from 'lucide-react';
 
 const INDIAN_PHONE_REGEX = /^[6-9]\d{9}$/;
@@ -42,7 +48,20 @@ export const WorkerDetailPage = () => {
   const [leaves, setLeaves] = useState([]);
   const [wages, setWages] = useState([]);
   const [payments, setPayments] = useState([]);
+  const [documents, setDocuments] = useState([]);
   const [tabLoading, setTabLoading] = useState(false);
+
+  // Document modal
+  const [docModalOpen, setDocModalOpen] = useState(false);
+  const [newDoc, setNewDoc] = useState({
+    documentType: 'aadhaar',
+    title: '',
+    documentNumber: '',
+    issueDate: '',
+    expiryDate: '',
+    notes: '',
+  });
+  const [submittingDoc, setSubmittingDoc] = useState(false);
 
   // Deactivate modal
   const [deactivateModalOpen, setDeactivateModalOpen] = useState(false);
@@ -94,6 +113,9 @@ export const WorkerDetailPage = () => {
         } else if (activeTab === 'payments' && isAdmin) {
           const data = await apiClient.get(`/workers/${id}/payments`);
           setPayments(data);
+        } else if (activeTab === 'documents') {
+          const data = await apiClient.get(`/workers/${id}/documents`);
+          setDocuments(data);
         }
       } catch (err) {
         console.error(err);
@@ -103,6 +125,54 @@ export const WorkerDetailPage = () => {
     };
     fetchTabData();
   }, [activeTab, worker]);
+
+  const handleAddDocument = async (e) => {
+    e.preventDefault();
+    if (!newDoc.title.trim()) {
+      showToast('Document title is required', 'error');
+      return;
+    }
+    setSubmittingDoc(true);
+    try {
+      const doc = await apiClient.post(`/workers/${id}/documents`, newDoc);
+      showToast('Document added successfully!', 'success');
+      setDocuments((prev) => [doc, ...prev]);
+      setDocModalOpen(false);
+      setNewDoc({
+        documentType: 'aadhaar',
+        title: '',
+        documentNumber: '',
+        issueDate: '',
+        expiryDate: '',
+        notes: '',
+      });
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      setSubmittingDoc(false);
+    }
+  };
+
+  const handleVerifyDocument = async (docId, status) => {
+    try {
+      const updated = await apiClient.patch(`/workers/${id}/documents/${docId}/verify`, { status });
+      showToast(`Document marked as ${status}!`, 'success');
+      setDocuments((prev) => prev.map((d) => (d.id === docId ? updated : d)));
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
+  const handleDeleteDocument = async (docId) => {
+    if (!window.confirm('Delete this worker document?')) return;
+    try {
+      await apiClient.delete(`/workers/${id}/documents/${docId}`);
+      showToast('Document deleted.', 'success');
+      setDocuments((prev) => prev.filter((d) => d.id !== docId));
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
 
   // Bug Fix 2: Deactivate worker
   const handleDeactivate = async () => {
@@ -371,6 +441,24 @@ export const WorkerDetailPage = () => {
           Leave Records
         </button>
 
+        <button
+          onClick={() => setActiveTab('documents')}
+          className="btn"
+          style={{
+            borderBottom: activeTab === 'documents' ? '2px solid var(--primary)' : '2px solid transparent',
+            borderRadius: '0',
+            color: activeTab === 'documents' ? '#FFF' : 'var(--text-muted)',
+            fontWeight: activeTab === 'documents' ? 600 : 400,
+            padding: '10px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+          }}
+        >
+          <FileText size={15} />
+          <span>Documents & Expiry</span>
+        </button>
+
         {isAdmin && (
           <>
             <button
@@ -536,7 +624,7 @@ export const WorkerDetailPage = () => {
               </tbody>
             </table>
           )
-        ) : (
+        ) : activeTab === 'payments' ? (
           payments.length === 0 ? (
             <div style={{ padding: '36px', textAlign: 'center', color: 'var(--text-muted)' }}>
               No payroll items or disbursement records found for this worker.
@@ -583,8 +671,274 @@ export const WorkerDetailPage = () => {
               </tbody>
             </table>
           )
-        )}
+        ) : activeTab === 'documents' ? (
+          <div>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '16px 20px',
+                borderBottom: '1px solid var(--border-subtle)',
+                backgroundColor: 'rgba(255, 255, 255, 0.01)',
+              }}
+            >
+              <div>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  Worker Identity & Compliance Documents
+                </h4>
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  Aadhaar, PAN, labour contracts, certificates & expiry tracking
+                </p>
+              </div>
+              <button
+                onClick={() => setDocModalOpen(true)}
+                className="btn btn-primary btn-sm"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <Upload size={14} />
+                <span>Upload Document</span>
+              </button>
+            </div>
+
+            {documents.length === 0 ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                No documents uploaded for this worker yet. Click "Upload Document" to attach identity or certification records.
+              </div>
+            ) : (
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Type</th>
+                    <th>Document Title</th>
+                    <th>Identifier / Ref #</th>
+                    <th>Issue Date</th>
+                    <th>Expiry Date</th>
+                    <th>Status</th>
+                    <th>Verification</th>
+                    <th style={{ textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {documents.map((doc) => {
+                    const isExpiringSoon =
+                      doc.expiryDate &&
+                      new Date(doc.expiryDate).getTime() - Date.now() < 30 * 86400000 &&
+                      new Date(doc.expiryDate).getTime() > Date.now();
+                    const isExpired = doc.expiryDate && new Date(doc.expiryDate).getTime() <= Date.now();
+
+                    return (
+                      <tr key={doc.id}>
+                        <td>
+                          <span
+                            style={{
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              textTransform: 'uppercase',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              backgroundColor: 'rgba(59, 130, 246, 0.12)',
+                              color: 'var(--primary)',
+                            }}
+                          >
+                            {doc.documentType}
+                          </span>
+                        </td>
+                        <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                          {doc.title}
+                        </td>
+                        <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.82rem' }}>
+                          {doc.documentNumber || '—'}
+                        </td>
+                        <td>{doc.issueDate || '—'}</td>
+                        <td>
+                          {doc.expiryDate ? (
+                            <div>
+                              <span>{doc.expiryDate}</span>
+                              {isExpired && (
+                                <span
+                                  style={{
+                                    marginLeft: '6px',
+                                    fontSize: '0.68rem',
+                                    padding: '2px 6px',
+                                    borderRadius: '3px',
+                                    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                                    color: 'var(--danger)',
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  EXPIRED
+                                </span>
+                              )}
+                              {isExpiringSoon && (
+                                <span
+                                  style={{
+                                    marginLeft: '6px',
+                                    fontSize: '0.68rem',
+                                    padding: '2px 6px',
+                                    borderRadius: '3px',
+                                    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                                    color: 'var(--warning)',
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  EXPIRING SOON
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)' }}>No Expiry</span>
+                          )}
+                        </td>
+                        <td>
+                          <StatusBadge status={doc.verificationStatus} />
+                        </td>
+                        <td style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                          {doc.verifier?.fullName ? `Verified by ${doc.verifier.fullName}` : 'Awaiting review'}
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <div style={{ display: 'inline-flex', gap: '6px' }}>
+                            {isAdmin && doc.verificationStatus === 'PENDING' && (
+                              <>
+                                <button
+                                  onClick={() => handleVerifyDocument(doc.id, 'VERIFIED')}
+                                  className="btn btn-secondary btn-sm"
+                                  title="Approve & Verify"
+                                  style={{ color: 'var(--success)' }}
+                                >
+                                  <CheckCircle2 size={14} />
+                                </button>
+                                <button
+                                  onClick={() => handleVerifyDocument(doc.id, 'REJECTED')}
+                                  className="btn btn-secondary btn-sm"
+                                  title="Reject Document"
+                                  style={{ color: 'var(--danger)' }}
+                                >
+                                  <XCircle size={14} />
+                                </button>
+                              </>
+                            )}
+                            {isAdmin && (
+                              <button
+                                onClick={() => handleDeleteDocument(doc.id)}
+                                className="btn btn-secondary btn-sm"
+                                title="Delete Document"
+                                style={{ color: 'var(--text-muted)' }}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        ) : null}
       </div>
+
+      {/* Upload Document Modal */}
+      <Modal
+        isOpen={docModalOpen}
+        onClose={() => setDocModalOpen(false)}
+        title="Attach Worker Document"
+        maxWidth="500px"
+      >
+        <form onSubmit={handleAddDocument}>
+          <div className="form-group" style={{ marginBottom: '14px' }}>
+            <label className="form-label">Document Type *</label>
+            <select
+              className="form-control"
+              value={newDoc.documentType}
+              onChange={(e) => setNewDoc({ ...newDoc, documentType: e.target.value })}
+              required
+            >
+              <option value="aadhaar">Aadhaar Card (UIDAI)</option>
+              <option value="pan">PAN Card</option>
+              <option value="voter_id">Voter Identity Card</option>
+              <option value="contract">Employment / Labour Contract</option>
+              <option value="certificate">Trade / Skill Certificate</option>
+              <option value="medical">Medical Fitness Certificate</option>
+              <option value="other">Other Identity Document</option>
+            </select>
+          </div>
+
+          <div className="form-group" style={{ marginBottom: '14px' }}>
+            <label className="form-label">Document Title *</label>
+            <input
+              type="text"
+              className="form-control"
+              placeholder="e.g. Aadhaar Card Front & Back"
+              value={newDoc.title}
+              onChange={(e) => setNewDoc({ ...newDoc, title: e.target.value })}
+              required
+            />
+          </div>
+
+          <div className="form-group" style={{ marginBottom: '14px' }}>
+            <label className="form-label">Document Reference Number</label>
+            <input
+              type="text"
+              className="form-control"
+              placeholder="e.g. XXXX-XXXX-1234 or ABCDE1234F"
+              value={newDoc.documentNumber}
+              onChange={(e) => setNewDoc({ ...newDoc, documentNumber: e.target.value })}
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+            <div className="form-group">
+              <label className="form-label">Issue Date</label>
+              <input
+                type="date"
+                className="form-control"
+                value={newDoc.issueDate}
+                onChange={(e) => setNewDoc({ ...newDoc, issueDate: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Expiry Date</label>
+              <input
+                type="date"
+                className="form-control"
+                value={newDoc.expiryDate}
+                onChange={(e) => setNewDoc({ ...newDoc, expiryDate: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="form-group" style={{ marginBottom: '18px' }}>
+            <label className="form-label">Notes / Remarks</label>
+            <textarea
+              className="form-control"
+              rows={2}
+              placeholder="Optional verification remarks or issuer details..."
+              value={newDoc.notes}
+              onChange={(e) => setNewDoc({ ...newDoc, notes: e.target.value })}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+            <button
+              type="button"
+              onClick={() => setDocModalOpen(false)}
+              className="btn btn-secondary"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={submittingDoc}
+            >
+              {submittingDoc ? 'Saving Document...' : 'Save & Attach Document'}
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       {/* Deactivate Modal */}
       <Modal

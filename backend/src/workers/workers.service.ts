@@ -16,6 +16,7 @@ import {
   PayrollItem,
   SupervisorSite,
   WorkSite,
+  WorkerDocument,
 } from '../database/entities';
 import { Role, WorkerStatus, AssignmentStatus, WageType, EmploymentType } from '../common/enums';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
@@ -54,6 +55,8 @@ export class WorkersService {
     private ssRepo: Repository<SupervisorSite>,
     @InjectRepository(WorkSite)
     private siteRepo: Repository<WorkSite>,
+    @InjectRepository(WorkerDocument)
+    private docRepo: Repository<WorkerDocument>,
     private dataSource: DataSource,
     private activityLogsService: ActivityLogsService,
   ) {}
@@ -449,5 +452,232 @@ export class WorkersService {
       message: `Worker ${worker.workerCode} has been reactivated successfully`,
       worker: await this.findOne(id, user),
     };
+  }
+
+  // --- Worker Document Management ---
+
+  async getWorkerDocuments(workerId: string, user: any) {
+    await this.findOne(workerId, user); // verifies worker exists and user has site scope
+    return this.docRepo.find({
+      where: { workerId },
+      relations: ['verifier'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async addWorkerDocument(workerId: string, dto: any, user: any, ip?: string) {
+    const worker = await this.findOne(workerId, user);
+
+    if (!dto.title || !dto.documentType) {
+      throw new BadRequestException('Document title and type are required');
+    }
+
+    const doc = this.docRepo.create({
+      workerId,
+      documentType: dto.documentType,
+      title: dto.title,
+      documentNumber: dto.documentNumber || null,
+      fileName: dto.fileName || `${dto.title.replace(/\s+/g, '_')}.pdf`,
+      filePath: dto.filePath || `/uploads/documents/${worker.workerCode}_${Date.now()}.pdf`,
+      fileSize: dto.fileSize || 102400,
+      mimeType: dto.mimeType || 'application/pdf',
+      issueDate: dto.issueDate || null,
+      expiryDate: dto.expiryDate || null,
+      verificationStatus: 'PENDING',
+      notes: dto.notes || null,
+    });
+
+    const saved = await this.docRepo.save(doc);
+
+    await this.activityLogsService.log({
+      userId: user.id,
+      userEmail: user.email,
+      userRole: user.role,
+      action: 'WORKER_DOCUMENT_UPLOADED',
+      entityType: 'WorkerDocument',
+      entityId: saved.id,
+      changeDetails: { workerCode: worker.workerCode, title: doc.title, type: doc.documentType },
+      ipAddress: ip,
+    });
+
+    return saved;
+  }
+
+  async verifyWorkerDocument(
+    workerId: string,
+    docId: string,
+    dto: { status: 'VERIFIED' | 'REJECTED'; notes?: string },
+    user: any,
+    ip?: string,
+  ) {
+    await this.findOne(workerId, user);
+    const doc = await this.docRepo.findOne({ where: { id: docId, workerId } });
+    if (!doc) {
+      throw new NotFoundException('Document not found');
+    }
+
+    doc.verificationStatus = dto.status;
+    doc.verifiedBy = user.id;
+    doc.verifiedAt = new Date();
+    if (dto.notes) doc.notes = dto.notes;
+
+    const saved = await this.docRepo.save(doc);
+
+    await this.activityLogsService.log({
+      userId: user.id,
+      userEmail: user.email,
+      userRole: user.role,
+      action: `WORKER_DOCUMENT_${dto.status}`,
+      entityType: 'WorkerDocument',
+      entityId: saved.id,
+      changeDetails: { documentId: docId, newStatus: dto.status, verifier: user.email },
+      ipAddress: ip,
+    });
+
+    return saved;
+  }
+
+  async deleteWorkerDocument(workerId: string, docId: string, user: any, ip?: string) {
+    await this.findOne(workerId, user);
+    const doc = await this.docRepo.findOne({ where: { id: docId, workerId } });
+    if (!doc) {
+      throw new NotFoundException('Document not found');
+    }
+
+    await this.docRepo.remove(doc);
+
+    await this.activityLogsService.log({
+      userId: user.id,
+      userEmail: user.email,
+      userRole: user.role,
+      action: 'WORKER_DOCUMENT_DELETED',
+      entityType: 'WorkerDocument',
+      entityId: docId,
+      changeDetails: { title: doc.title, documentType: doc.documentType },
+      ipAddress: ip,
+    });
+
+    return { success: true, message: 'Document deleted successfully' };
+  }
+
+  // --- Bulk Worker Import ---
+
+  async bulkImport(
+    workersList: Array<{
+      fullName: string;
+      phone: string;
+      address?: string;
+      gender?: string;
+      joiningDate?: string;
+      employmentType?: EmploymentType;
+      wageType?: WageType;
+      wageRate?: number;
+      workSiteId?: string;
+    }>,
+    user: any,
+    ip?: string,
+  ) {
+    if (!Array.isArray(workersList) || workersList.length === 0) {
+      throw new BadRequestException('Import payload must be a non-empty array of workers');
+    }
+
+    const phoneRegex = /^[6-9]\d{9}$/;
+    const results = {
+      total: workersList.length,
+      imported: 0,
+      failed: 0,
+      errors: [] as Array<{ row: number; name?: string; phone?: string; error: string }>,
+      createdWorkerCodes: [] as string[],
+    };
+
+    for (let i = 0; i < workersList.length; i++) {
+      const row = workersList[i];
+      const rowNum = i + 1;
+
+      try {
+        if (!row.fullName || !row.fullName.trim()) {
+          throw new BadRequestException('Full name is required');
+        }
+
+        const phone = (row.phone || '').trim();
+        if (!phoneRegex.test(phone)) {
+          throw new BadRequestException(
+            `Invalid phone "${phone}". Must be exactly 10 digits starting with 6-9`,
+          );
+        }
+
+        const existingPhone = await this.workerRepo.findOne({ where: { phone } });
+        if (existingPhone) {
+          throw new ConflictException(`Phone ${phone} already exists in database`);
+        }
+
+        const workerCode = await this.generateWorkerCode();
+
+        const worker = this.workerRepo.create({
+          workerCode,
+          fullName: row.fullName.trim(),
+          phone,
+          address: row.address?.trim() || 'Work Site Accommodation',
+          gender: row.gender || 'MALE',
+          joiningDate: row.joiningDate || new Date().toISOString().split('T')[0],
+          employmentType: row.employmentType || EmploymentType.DAILY_WAGE,
+          status: WorkerStatus.ACTIVE,
+        });
+
+        const savedWorker = await this.workerRepo.save(worker);
+
+        // Record initial wage
+        const wageRate = row.wageRate || 650;
+        const wage = this.wageRepo.create({
+          workerId: savedWorker.id,
+          wageType: row.wageType || WageType.DAILY,
+          rate: wageRate.toFixed(2),
+          effectiveFrom: savedWorker.joiningDate,
+          changedBy: user.id,
+          notes: 'Initial wage rate upon bulk import',
+        });
+        await this.wageRepo.save(wage);
+
+        // Assign to work site if provided
+        if (row.workSiteId) {
+          const assign = this.waRepo.create({
+            workerId: savedWorker.id,
+            workSiteId: row.workSiteId,
+            startDate: savedWorker.joiningDate,
+            status: AssignmentStatus.ACTIVE,
+            roleTitle: 'General Labour',
+          });
+          await this.waRepo.save(assign);
+        }
+
+        results.imported++;
+        results.createdWorkerCodes.push(savedWorker.workerCode);
+      } catch (err: any) {
+        results.failed++;
+        results.errors.push({
+          row: rowNum,
+          name: row.fullName,
+          phone: row.phone,
+          error: err.message || 'Unknown import error',
+        });
+      }
+    }
+
+    await this.activityLogsService.log({
+      userId: user.id,
+      userEmail: user.email,
+      userRole: user.role,
+      action: 'WORKERS_BULK_IMPORTED',
+      entityType: 'Worker',
+      entityId: user.id,
+      changeDetails: {
+        total: results.total,
+        imported: results.imported,
+        failed: results.failed,
+      },
+      ipAddress: ip,
+    });
+
+    return results;
   }
 }

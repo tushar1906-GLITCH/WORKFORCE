@@ -21,6 +21,7 @@ import ReportsPage from './pages/Reports/ReportsPage';
 import UsersPage from './pages/Users/UsersPage';
 import ActivityLogsPage from './pages/ActivityLogs/ActivityLogsPage';
 import SettingsPage from './pages/Settings/SettingsPage';
+import AiAssistantPage from './pages/AiAssistant/AiAssistantPage';
 
 // Admin Protected Route Wrapper
 const AdminRoute = ({ children }) => {
@@ -41,6 +42,7 @@ export function App() {
             <Route path="/" element={<AppLayout />}>
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<DashboardPage />} />
+              <Route path="ai-assistant" element={<AiAssistantPage />} />
               <Route path="workers" element={<WorkersPage />} />
               <Route path="workers/:id" element={<WorkerDetailPage />} />
               <Route path="attendance" element={<AttendancePage />} />

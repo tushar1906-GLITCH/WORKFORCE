@@ -21,6 +21,11 @@ import {
   Edit2,
   UserCheck,
   UserX,
+  Upload,
+  FileSpreadsheet,
+  Download,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
 
 const INDIAN_PHONE_REGEX = /^[6-9]\d{9}$/;
@@ -71,6 +76,14 @@ export const WorkersPage = () => {
   const [editingWorker, setEditingWorker] = useState(null);
   const [editPhoneError, setEditPhoneError] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
+
+  // Bulk Import Modal
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  const [bulkText, setBulkText] = useState('');
+  const [parsedRows, setParsedRows] = useState([]);
+  const [bulkImporting, setBulkImporting] = useState(false);
+  const [bulkResult, setBulkResult] = useState(null);
+  const [bulkSiteId, setBulkSiteId] = useState('');
 
   useEffect(() => {
     const loadDropdowns = async () => {
@@ -125,6 +138,95 @@ export const WorkersPage = () => {
     e.preventDefault();
     setPage(1);
     fetchWorkers();
+  };
+
+  const handleParseCsv = (rawText) => {
+    setBulkText(rawText);
+    setBulkResult(null);
+    if (!rawText.trim()) {
+      setParsedRows([]);
+      return;
+    }
+
+    const lines = rawText.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
+    if (lines.length === 0) {
+      setParsedRows([]);
+      return;
+    }
+
+    const startIndex = /name|phone/i.test(lines[0]) ? 1 : 0;
+    const parsed = [];
+
+    for (let i = startIndex; i < lines.length; i++) {
+      const parts = lines[i].split(',').map((p) => p.trim());
+      if (parts.length >= 2) {
+        const fullName = parts[0] || '';
+        const phone = (parts[1] || '').replace(/\s+/g, '');
+        const address = parts[2] || 'Work Site Accommodation';
+        const gender = parts[3] || 'MALE';
+        const wageRate = parseFloat(parts[4]) || 700;
+
+        const isValidPhone = INDIAN_PHONE_REGEX.test(phone);
+        const isValidName = fullName.length > 1;
+
+        parsed.push({
+          rowNum: i + 1,
+          fullName,
+          phone,
+          address,
+          gender,
+          wageRate,
+          isValid: isValidPhone && isValidName,
+          error: !isValidName ? 'Name is too short' : !isValidPhone ? 'Invalid 10-digit Indian mobile' : null,
+        });
+      }
+    }
+    setParsedRows(parsed);
+  };
+
+  const handleDownloadTemplate = () => {
+    const csvContent =
+      'Full Name,Phone,Address,Gender,Daily Wage\n' +
+      'Ramesh Kumar,9876543210,Site Camp Block A,MALE,750\n' +
+      'Suresh Patil,8765432109,Site Camp Block B,MALE,800\n' +
+      'Sunita Devi,9123456780,Labour Quarters,FEMALE,750\n';
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'WorkForce_Worker_Import_Template.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExecuteBulkImport = async () => {
+    const validRows = parsedRows.filter((r) => r.isValid);
+    if (validRows.length === 0) {
+      showToast('No valid worker rows to import.', 'error');
+      return;
+    }
+
+    setBulkImporting(true);
+    try {
+      const payload = validRows.map((r) => ({
+        fullName: r.fullName,
+        phone: r.phone,
+        address: r.address,
+        gender: r.gender,
+        wageRate: r.wageRate,
+        workSiteId: bulkSiteId || undefined,
+      }));
+
+      const res = await apiClient.post('/workers/bulk-import', { workers: payload });
+      setBulkResult(res);
+      showToast(`Successfully imported ${res.imported} worker(s)!`, 'success');
+      fetchWorkers();
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      setBulkImporting(false);
+    }
   };
 
   // Bug Fix 1: Phone validation handler for new worker
@@ -262,15 +364,31 @@ export const WorkersPage = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            setPhoneError('');
-            setCreateModalOpen(true);
-          }}
-          className="btn btn-primary"
-        >
-          <Plus size={16} /> Register New Worker
-        </button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          {isAdmin && (
+            <button
+              onClick={() => {
+                setBulkModalOpen(true);
+                setBulkResult(null);
+                setParsedRows([]);
+                setBulkText('');
+              }}
+              className="btn btn-secondary"
+              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              <FileSpreadsheet size={16} /> Bulk Import (CSV/Excel)
+            </button>
+          )}
+          <button
+            onClick={() => {
+              setPhoneError('');
+              setCreateModalOpen(true);
+            }}
+            className="btn btn-primary"
+          >
+            <Plus size={16} /> Register New Worker
+          </button>
+        </div>
       </div>
 
       {/* Filter and Search Bar */}
@@ -795,6 +913,146 @@ export const WorkersPage = () => {
           </form>
         </Modal>
       )}
+
+      {/* Bulk Worker Import Modal */}
+      <Modal
+        isOpen={bulkModalOpen}
+        onClose={() => setBulkModalOpen(false)}
+        title="Bulk Worker Import (CSV / Excel)"
+        maxWidth="750px"
+      >
+        <div style={{ marginBottom: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              Paste comma-separated rows or upload CSV data below.
+            </span>
+            <button
+              onClick={handleDownloadTemplate}
+              className="btn btn-secondary btn-sm"
+              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              <Download size={14} /> Download CSV Template
+            </button>
+          </div>
+
+          <div className="form-group" style={{ marginBottom: '12px' }}>
+            <label className="form-label">Assign To Site (Optional)</label>
+            <select
+              className="form-control"
+              value={bulkSiteId}
+              onChange={(e) => setBulkSiteId(e.target.value)}
+            >
+              <option value="">Unassigned (Assign later)</option>
+              {sites.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group" style={{ marginBottom: '12px' }}>
+            <label className="form-label">CSV Data (Format: Full Name, Phone, Address, Gender, Daily Wage)</label>
+            <textarea
+              className="form-control"
+              rows={5}
+              placeholder="Ramesh Kumar, 9876543210, Camp A, MALE, 750&#10;Suresh Patil, 8765432109, Camp B, MALE, 800"
+              value={bulkText}
+              onChange={(e) => handleParseCsv(e.target.value)}
+              style={{ fontFamily: 'var(--font-mono)', fontSize: '0.82rem' }}
+            />
+          </div>
+
+          {/* Validation & Preview Strip */}
+          {parsedRows.length > 0 && (
+            <div style={{ marginTop: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
+                  Preview: {parsedRows.length} Row(s) Parsed ({parsedRows.filter((r) => r.isValid).length} Valid, {parsedRows.filter((r) => !r.isValid).length} Invalid)
+                </span>
+              </div>
+
+              <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)' }}>
+                <table className="data-table" style={{ fontSize: '0.8rem' }}>
+                  <thead>
+                    <tr>
+                      <th>Status</th>
+                      <th>Row</th>
+                      <th>Full Name</th>
+                      <th>Phone</th>
+                      <th>Wage Rate</th>
+                      <th>Validation Note</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {parsedRows.map((r, idx) => (
+                      <tr key={idx} style={{ backgroundColor: r.isValid ? 'transparent' : 'rgba(239, 68, 68, 0.08)' }}>
+                        <td>
+                          {r.isValid ? (
+                            <CheckCircle2 size={15} color="var(--success)" />
+                          ) : (
+                            <AlertCircle size={15} color="var(--danger)" />
+                          )}
+                        </td>
+                        <td>#{r.rowNum}</td>
+                        <td style={{ fontWeight: 600 }}>{r.fullName}</td>
+                        <td>{r.phone}</td>
+                        <td>₹{r.wageRate}</td>
+                        <td style={{ color: r.isValid ? 'var(--success)' : 'var(--danger)', fontSize: '0.75rem' }}>
+                          {r.isValid ? 'Valid Indian 10-digit format' : r.error}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Success Summary if imported */}
+          {bulkResult && (
+            <div
+              style={{
+                marginTop: '16px',
+                padding: '12px 16px',
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                border: '1px solid var(--success-border)',
+                color: 'var(--success)',
+                fontSize: '0.85rem',
+              }}
+            >
+              <div>
+                <strong>Import Complete:</strong> {bulkResult.imported} worker(s) created successfully!
+                {bulkResult.failed > 0 && ` (${bulkResult.failed} failed)`}
+              </div>
+              {bulkResult.createdWorkerCodes?.length > 0 && (
+                <div style={{ fontSize: '0.78rem', marginTop: '4px', color: 'var(--text-secondary)' }}>
+                  Assigned codes: {bulkResult.createdWorkerCodes.slice(0, 5).join(', ')}{bulkResult.createdWorkerCodes.length > 5 ? '...' : ''}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '16px' }}>
+          <button
+            type="button"
+            onClick={() => setBulkModalOpen(false)}
+            className="btn btn-secondary"
+          >
+            Close
+          </button>
+          <button
+            type="button"
+            onClick={handleExecuteBulkImport}
+            className="btn btn-primary"
+            disabled={bulkImporting || parsedRows.filter((r) => r.isValid).length === 0}
+          >
+            {bulkImporting
+              ? 'Importing Workers...'
+              : `Import ${parsedRows.filter((r) => r.isValid).length} Valid Worker(s)`}
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 };

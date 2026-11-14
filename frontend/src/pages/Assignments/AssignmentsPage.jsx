@@ -12,6 +12,9 @@ import {
   Plus,
   Search,
   Filter,
+  AlertTriangle,
+  Sparkles,
+  UserCheck,
 } from 'lucide-react';
 
 export const AssignmentsPage = () => {
@@ -294,6 +297,85 @@ export const AssignmentsPage = () => {
         }
       >
         <form onSubmit={handleCreateAssignment}>
+          {/* Smart Recommendation for Available Workers */}
+          {(() => {
+            const assignedIds = new Set(
+              assignments.filter((a) => a.status === 'ACTIVE').map((a) => a.workerId),
+            );
+            const unassigned = workers.filter((w) => !assignedIds.has(w.id));
+            const activeConflict = assignments.find(
+              (a) => a.workerId === newAssignment.workerId && a.status === 'ACTIVE',
+            );
+
+            return (
+              <>
+                {unassigned.length > 0 && !newAssignment.workerId && (
+                  <div
+                    style={{
+                      marginBottom: '14px',
+                      padding: '10px 12px',
+                      backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                      border: '1px solid rgba(59, 130, 246, 0.25)',
+                      borderRadius: 'var(--radius-md)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600, color: 'var(--primary)', marginBottom: '6px' }}>
+                      <Sparkles size={14} />
+                      <span>Smart Recommendation: {unassigned.length} Available Unassigned Worker(s)</span>
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {unassigned.slice(0, 5).map((w) => (
+                        <button
+                          key={w.id}
+                          type="button"
+                          onClick={() => setNewAssignment((prev) => ({ ...prev, workerId: w.id }))}
+                          style={{
+                            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                            border: '1px solid var(--border-subtle)',
+                            borderRadius: 'var(--radius-sm)',
+                            padding: '3px 8px',
+                            color: 'var(--text-primary)',
+                            fontSize: '0.74rem',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          + {w.fullName} ({w.workerCode})
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {activeConflict && (
+                  <div
+                    style={{
+                      marginBottom: '14px',
+                      padding: '10px 14px',
+                      backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                      border: '1px solid var(--warning-border)',
+                      borderRadius: 'var(--radius-md)',
+                      color: 'var(--warning)',
+                      fontSize: '0.82rem',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '8px',
+                    }}
+                  >
+                    <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
+                    <div>
+                      <strong>Shift / Location Conflict Detected:</strong>
+                      <div>
+                        This worker is currently active at <strong>{activeConflict.workSite?.name}</strong> on{' '}
+                        <strong>{activeConflict.shift?.name || 'General Shift'}</strong>.
+                        Creating a new assignment will create a parallel deployment. Use the "Transfer" action if reassigning permanently.
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            );
+          })()}
+
           <div className="form-group">
             <label className="form-label">Select Worker *</label>
             <select

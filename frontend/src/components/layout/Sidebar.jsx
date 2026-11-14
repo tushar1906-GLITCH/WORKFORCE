@@ -16,6 +16,7 @@ import {
   History,
   ShieldCheck,
   Settings,
+  Sparkles,
 } from 'lucide-react';
 
 export const Sidebar = () => {
@@ -40,6 +41,27 @@ export const Sidebar = () => {
         >
           <LayoutDashboard />
           <span>Dashboard</span>
+        </NavLink>
+
+        <NavLink
+          to="/ai-assistant"
+          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+        >
+          <Sparkles color="var(--primary)" />
+          <span>AI Assistant</span>
+          <span
+            style={{
+              marginLeft: 'auto',
+              fontSize: '0.65rem',
+              fontWeight: 700,
+              padding: '2px 6px',
+              borderRadius: 'var(--radius-full)',
+              backgroundColor: 'rgba(59, 130, 246, 0.2)',
+              color: 'var(--primary)',
+            }}
+          >
+            2.0
+          </span>
         </NavLink>
 
         <div className="nav-section-title">Workforce Operations</div>

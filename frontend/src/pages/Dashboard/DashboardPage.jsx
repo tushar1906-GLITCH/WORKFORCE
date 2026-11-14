@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../../api/client';
+import aiApi from '../../api/ai';
 import { useAuth } from '../../context/AuthContext';
 import StatCard from '../../components/common/StatCard';
 import {
@@ -16,6 +17,11 @@ import {
   ArrowRight,
   TrendingUp,
   MapPin,
+  Sparkles,
+  AlertTriangle,
+  CheckCircle2,
+  RefreshCw,
+  Bot,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -36,6 +42,20 @@ export const DashboardPage = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [aiInsights, setAiInsights] = useState(null);
+  const [loadingAi, setLoadingAi] = useState(false);
+
+  const fetchAiInsights = async () => {
+    try {
+      setLoadingAi(true);
+      const insights = await aiApi.getCommandCenterInsights();
+      setAiInsights(insights);
+    } catch (err) {
+      console.warn('Failed to load AI Command Center insights:', err);
+    } finally {
+      setLoadingAi(false);
+    }
+  };
 
   useEffect(() => {
     const fetchDashboard = async () => {
@@ -50,6 +70,7 @@ export const DashboardPage = () => {
       }
     };
     fetchDashboard();
+    fetchAiInsights();
   }, []);
 
   if (loading) {
@@ -96,6 +117,145 @@ export const DashboardPage = () => {
             <Users size={16} /> Workers Directory
           </button>
         </div>
+      </div>
+
+      {/* AI Operations Command Center Banner */}
+      <div
+        style={{
+          background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(139, 92, 246, 0.08) 100%)',
+          border: '1px solid rgba(59, 130, 246, 0.3)',
+          borderRadius: 'var(--radius-lg)',
+          padding: '20px 24px',
+          marginBottom: '24px',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                backgroundColor: 'rgba(59, 130, 246, 0.25)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--primary)',
+              }}
+            >
+              <Sparkles size={18} />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontWeight: 700, fontSize: '0.98rem', color: 'var(--text-primary)' }}>
+                  AI Operations Command Center
+                </span>
+                <span
+                  style={{
+                    fontSize: '0.68rem',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    padding: '2px 8px',
+                    borderRadius: 'var(--radius-full)',
+                    backgroundColor: (aiInsights?.actionableIssues?.length || 0) > 0 ? 'rgba(245, 158, 11, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                    color: (aiInsights?.actionableIssues?.length || 0) > 0 ? 'var(--warning)' : 'var(--success)',
+                    border: `1px solid ${(aiInsights?.actionableIssues?.length || 0) > 0 ? 'var(--warning-border)' : 'var(--success-border)'}`,
+                  }}
+                >
+                  {(aiInsights?.actionableIssues?.length || 0) > 0 ? `${aiInsights.actionableIssues.length} Attention Item(s)` : 'All Systems Optimal'}
+                </span>
+              </div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                Live operational intelligence synthesized from PostgreSQL tables &bull; Updated just now
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              onClick={fetchAiInsights}
+              disabled={loadingAi}
+              className="btn btn-secondary btn-sm"
+              title="Refresh AI Insights"
+              style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
+            >
+              <RefreshCw size={13} />
+              <span>Refresh</span>
+            </button>
+            <button
+              onClick={() => navigate('/ai-assistant')}
+              className="btn btn-primary btn-sm"
+              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              <Bot size={14} />
+              <span>Ask AI Assistant</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Actionable Issues / Insights Strip */}
+        {aiInsights?.actionableIssues && aiInsights.actionableIssues.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
+            {aiInsights.actionableIssues.map((issue, idx) => (
+              <div
+                key={idx}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '10px 14px',
+                  backgroundColor: 'rgba(0, 0, 0, 0.25)',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid rgba(255, 255, 255, 0.06)',
+                  fontSize: '0.84rem',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+                  <AlertTriangle size={15} color="var(--warning)" />
+                  <span>{issue}</span>
+                </div>
+                <button
+                  onClick={() => {
+                    if (issue.includes('attendance')) navigate('/attendance');
+                    else if (issue.includes('leave')) navigate('/leave');
+                    else if (issue.includes('assignment')) navigate('/assignments');
+                    else navigate('/ai-assistant');
+                  }}
+                  style={{
+                    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+                    color: '#93C5FD',
+                    border: '1px solid rgba(59, 130, 246, 0.3)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '4px 10px',
+                    fontSize: '0.78rem',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                  }}
+                >
+                  Resolve Now &rarr;
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 14px',
+              backgroundColor: 'rgba(16, 185, 129, 0.08)',
+              borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--success-border)',
+              color: 'var(--success)',
+              fontSize: '0.84rem',
+            }}
+          >
+            <CheckCircle2 size={16} />
+            <span>Attendance is current, all active workers have assignments, and no pending leave alerts detected.</span>
+          </div>
+        )}
       </div>
 
       {/* KPI Cards Grid */}

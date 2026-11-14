@@ -13,4 +13,9 @@ export default () => ({
   },
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:5173',
   defaultTimezone: process.env.DEFAULT_TIMEZONE || 'Asia/Kolkata',
+  groq: {
+    apiKey: process.env.GROQ_API_KEY || '',
+    model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
+    fallbackModel: process.env.GROQ_FALLBACK_MODEL || 'llama-3.1-8b-instant',
+  },
 });

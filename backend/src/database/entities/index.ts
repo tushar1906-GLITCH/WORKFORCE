@@ -18,3 +18,6 @@ export * from './payroll-adjustment.entity';
 export * from './notification.entity';
 export * from './activity-log.entity';
 export * from './org-setting.entity';
+export * from './ai-conversation.entity';
+export * from './ai-message.entity';
+export * from './worker-document.entity';

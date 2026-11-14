@@ -9,6 +9,7 @@ import {
   PayrollItem,
   SupervisorSite,
   WorkSite,
+  WorkerDocument,
 } from '../database/entities';
 import { WorkersService } from './workers.service';
 import { WorkersController } from './workers.controller';
@@ -24,6 +25,7 @@ import { WorkersController } from './workers.controller';
       PayrollItem,
       SupervisorSite,
       WorkSite,
+      WorkerDocument,
     ]),
   ],
   controllers: [WorkersController],

@@ -18,6 +18,7 @@ import { LeaveRequest } from './leave-request.entity';
 import { WageRateHistory } from './wage-rate-history.entity';
 import { WorkerAdvance } from './worker-advance.entity';
 import { PayrollItem } from './payroll-item.entity';
+import { WorkerDocument } from './worker-document.entity';
 
 @Entity('workers')
 export class Worker {
@@ -107,4 +108,7 @@ export class Worker {
 
   @OneToMany(() => PayrollItem, (pi) => pi.worker)
   payrollItems: PayrollItem[];
+
+  @OneToMany(() => WorkerDocument, (d) => d.worker)
+  documents: WorkerDocument[];
 }
