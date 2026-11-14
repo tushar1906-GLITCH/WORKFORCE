@@ -4,6 +4,9 @@ import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
 import StatusBadge from '../../components/common/StatusBadge';
 import Modal from '../../components/common/Modal';
+import PageHeader from '../../components/common/PageHeader';
+import { TableSkeleton } from '../../components/common/LoadingSkeleton';
+import EmptyState from '../../components/common/EmptyState';
 import {
   Calendar,
   Clock,
@@ -19,6 +22,10 @@ import {
   CheckSquare,
   Square,
   Edit3,
+  Sparkles,
+  ChevronRight,
+  UserCheck,
+  AlertTriangle,
 } from 'lucide-react';
 
 export const AttendancePage = () => {
@@ -111,7 +118,12 @@ export const AttendancePage = () => {
               currentStatus: newStatus,
               isDirty: true,
               checkIn: newStatus === 'PRESENT' || newStatus === 'HALF_DAY' ? w.checkIn || '08:00' : null,
-              checkOut: newStatus === 'PRESENT' ? w.checkOut || '17:00' : newStatus === 'HALF_DAY' ? w.checkOut || '12:30' : null,
+              checkOut:
+                newStatus === 'PRESENT'
+                  ? w.checkOut || '17:00'
+                  : newStatus === 'HALF_DAY'
+                  ? w.checkOut || '12:30'
+                  : null,
             }
           : w,
       ),
@@ -127,7 +139,6 @@ export const AttendancePage = () => {
     let countMarked = 0;
     setWorkers((prev) =>
       prev.map((w) => {
-        // Protect workers with approved leave, holiday or already finalized/marked
         if (w.currentStatus === 'NOT_MARKED') {
           countMarked++;
           return {
@@ -212,9 +223,7 @@ export const AttendancePage = () => {
         w.fullName.toLowerCase().includes(search.toLowerCase()) ||
         w.workerCode.toLowerCase().includes(search.toLowerCase());
 
-      const matchStatus =
-        statusFilter === 'ALL' ||
-        w.currentStatus === statusFilter;
+      const matchStatus = statusFilter === 'ALL' || w.currentStatus === statusFilter;
 
       return matchSearch && matchStatus;
     });
@@ -264,9 +273,7 @@ export const AttendancePage = () => {
 
     setSaving(true);
     try {
-      // First save dirty records
       await handleSaveBatch();
-      // Finalize
       await apiClient.post('/attendance/finalize', {
         workSiteId: selectedSiteId,
         shiftId: selectedShiftId,
@@ -308,62 +315,88 @@ export const AttendancePage = () => {
   };
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* Page Header */}
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Attendance Management</h1>
-          <p className="page-description">
-            Individual-first attendance recording with smart bulk shortcuts and audit-compliant finalization
-          </p>
-        </div>
-
-        <div style={{ display: 'flex', gap: '10px' }}>
-          {isFinalized ? (
+      <PageHeader
+        title="Daily Attendance Operations"
+        description="Shift-scoped attendance verification with rapid bulk workflows and immutable audit locking"
+        actions={
+          isFinalized ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span className="badge badge-approved" style={{ padding: '8px 12px', fontSize: '0.82rem' }}>
+              <span
+                className="badge badge-approved"
+                style={{
+                  padding: '8px 14px',
+                  fontSize: '0.8rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
                 <Lock size={14} /> Batch Finalized & Locked
               </span>
               {isAdmin && (
                 <button
                   onClick={() => setReopenModalOpen(true)}
                   className="btn btn-secondary btn-sm"
+                  style={{ gap: '6px', height: '36px' }}
                 >
                   <Unlock size={14} /> Reopen Batch
                 </button>
               )}
             </div>
           ) : (
-            <>
+            <div style={{ display: 'flex', gap: '10px' }}>
               <button
                 onClick={handleMarkAllPresent}
-                className="btn btn-secondary"
+                className="btn btn-secondary btn-sm"
                 disabled={workers.length === 0}
+                style={{ gap: '6px', height: '36px' }}
                 title="Marks ONLY eligible workers currently Not Marked"
               >
-                <CheckCircle2 size={16} color="var(--success)" /> Mark All Present
+                <CheckCircle2 size={15} color="var(--success)" />
+                <span>Mark All Unmarked Present</span>
               </button>
               <button
                 onClick={() => setReviewModalOpen(true)}
-                className="btn btn-primary"
+                className="btn btn-primary btn-sm"
                 disabled={workers.length === 0}
+                style={{ gap: '6px', height: '36px' }}
               >
-                <Save size={16} /> Review & Save Attendance
+                <Save size={15} />
+                <span>Review & Save Batch</span>
               </button>
-            </>
-          )}
-        </div>
-      </div>
+            </div>
+          )
+        }
+      />
 
-      {/* Selectors Bar */}
-      <div className="card" style={{ marginBottom: '20px', padding: '16px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+      {/* Operational Selectors Bar */}
+      <div
+        className="card"
+        style={{
+          padding: '18px 20px',
+          backgroundColor: 'var(--bg-surface, #111827)',
+          border: '1px solid var(--border-subtle)',
+        }}
+      >
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gap: '16px',
+          }}
+        >
           <div className="form-group" style={{ margin: 0 }}>
-            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <MapPin size={14} /> Work Location
+            <label
+              className="form-label"
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem' }}
+            >
+              <MapPin size={13} color="var(--primary)" /> Work Location
             </label>
             <select
               className="form-control"
+              style={{ height: '38px', fontSize: '0.84rem' }}
               value={selectedSiteId}
               onChange={(e) => setSelectedSiteId(e.target.value)}
             >
@@ -376,23 +409,31 @@ export const AttendancePage = () => {
           </div>
 
           <div className="form-group" style={{ margin: 0 }}>
-            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Calendar size={14} /> Attendance Date
+            <label
+              className="form-label"
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem' }}
+            >
+              <Calendar size={13} color="var(--primary)" /> Attendance Date
             </label>
             <input
               type="date"
               className="form-control"
+              style={{ height: '38px', fontSize: '0.84rem' }}
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
             />
           </div>
 
           <div className="form-group" style={{ margin: 0 }}>
-            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Clock size={14} /> Shift
+            <label
+              className="form-label"
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem' }}
+            >
+              <Clock size={13} color="var(--primary)" /> Shift Schedule
             </label>
             <select
               className="form-control"
+              style={{ height: '38px', fontSize: '0.84rem' }}
               value={selectedShiftId}
               onChange={(e) => setSelectedShiftId(e.target.value)}
             >
@@ -411,50 +452,88 @@ export const AttendancePage = () => {
         className="card"
         style={{
           padding: '14px 20px',
-          marginBottom: '20px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           flexWrap: 'wrap',
-          gap: '12px',
+          gap: '14px',
           backgroundColor: 'rgba(255, 255, 255, 0.02)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Eligible:</span>
-            <span style={{ fontWeight: 700, color: '#FFF' }}>{summary.TOTAL}</span>
-          </div>
-          <span style={{ color: 'var(--border-subtle)' }}>|</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span className="badge badge-present">Present: {summary.PRESENT}</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span className="badge badge-absent">Absent: {summary.ABSENT}</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span className="badge badge-half-day">Half Day: {summary.HALF_DAY}</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span className="badge badge-on-leave">On Leave: {summary.ON_LEAVE}</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span className="badge badge-weekly-off">Weekly Off: {summary.WEEKLY_OFF}</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span className="badge badge-not-marked" style={{ border: summary.NOT_MARKED > 0 ? '1px solid var(--warning)' : undefined }}>
-              Not Marked: {summary.NOT_MARKED}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginRight: '6px' }}>
+            <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+              Eligible:
+            </span>
+            <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.94rem' }}>
+              {summary.TOTAL}
             </span>
           </div>
+
+          <span
+            onClick={() => setStatusFilter(statusFilter === 'PRESENT' ? 'ALL' : 'PRESENT')}
+            style={{ cursor: 'pointer' }}
+          >
+            <StatusBadge status="PRESENT" />
+            <strong style={{ marginLeft: '4px', fontSize: '0.78rem' }}>{summary.PRESENT}</strong>
+          </span>
+
+          <span
+            onClick={() => setStatusFilter(statusFilter === 'ABSENT' ? 'ALL' : 'ABSENT')}
+            style={{ cursor: 'pointer' }}
+          >
+            <StatusBadge status="ABSENT" />
+            <strong style={{ marginLeft: '4px', fontSize: '0.78rem' }}>{summary.ABSENT}</strong>
+          </span>
+
+          <span
+            onClick={() => setStatusFilter(statusFilter === 'HALF_DAY' ? 'ALL' : 'HALF_DAY')}
+            style={{ cursor: 'pointer' }}
+          >
+            <StatusBadge status="HALF_DAY" />
+            <strong style={{ marginLeft: '4px', fontSize: '0.78rem' }}>{summary.HALF_DAY}</strong>
+          </span>
+
+          <span
+            onClick={() => setStatusFilter(statusFilter === 'ON_LEAVE' ? 'ALL' : 'ON_LEAVE')}
+            style={{ cursor: 'pointer' }}
+          >
+            <StatusBadge status="ON_LEAVE" />
+            <strong style={{ marginLeft: '4px', fontSize: '0.78rem' }}>{summary.ON_LEAVE}</strong>
+          </span>
+
+          <span
+            onClick={() => setStatusFilter(statusFilter === 'WEEKLY_OFF' ? 'ALL' : 'WEEKLY_OFF')}
+            style={{ cursor: 'pointer' }}
+          >
+            <StatusBadge status="WEEKLY_OFF" />
+            <strong style={{ marginLeft: '4px', fontSize: '0.78rem' }}>{summary.WEEKLY_OFF}</strong>
+          </span>
+
+          <span
+            onClick={() => setStatusFilter(statusFilter === 'NOT_MARKED' ? 'ALL' : 'NOT_MARKED')}
+            style={{ cursor: 'pointer' }}
+          >
+            <span
+              className="badge badge-not-marked"
+              style={{
+                borderColor: summary.NOT_MARKED > 0 ? 'rgba(245, 158, 11, 0.5)' : undefined,
+                backgroundColor: summary.NOT_MARKED > 0 ? 'rgba(245, 158, 11, 0.1)' : undefined,
+              }}
+            >
+              Not Marked: {summary.NOT_MARKED}
+            </span>
+          </span>
         </div>
 
+        {/* Completion Progress Bar */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Completion:</span>
+          <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>Completion:</span>
           <div
             style={{
-              width: '100px',
-              height: '8px',
-              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              width: '90px',
+              height: '6px',
+              backgroundColor: 'rgba(255, 255, 255, 0.08)',
               borderRadius: 'var(--radius-full)',
               overflow: 'hidden',
             }}
@@ -468,21 +547,20 @@ export const AttendancePage = () => {
               }}
             />
           </div>
-          <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#FFF' }}>
+          <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)' }}>
             {summary.completionPct}%
           </span>
         </div>
       </div>
 
-      {/* Bulk Actions Floating Bar when rows selected */}
+      {/* Floating Bulk Action Bar when rows selected */}
       {selectedWorkerIds.length > 0 && !isFinalized && (
         <div
           className="card"
           style={{
-            marginBottom: '16px',
             padding: '12px 18px',
-            backgroundColor: 'rgba(59, 130, 246, 0.08)',
-            border: '1px solid var(--primary)',
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            borderColor: 'rgba(59, 130, 246, 0.35)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -491,227 +569,291 @@ export const AttendancePage = () => {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <CheckSquare size={18} color="var(--primary)" />
-            <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#FFF' }}>
+            <CheckSquare size={16} color="var(--primary)" />
+            <span style={{ fontSize: '0.86rem', fontWeight: 600, color: 'var(--text-primary)' }}>
               {selectedWorkerIds.length} worker(s) selected
             </span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Apply Status:</span>
+            <span style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}>Apply Status:</span>
             <button
               onClick={() => handleApplyBulkStatus('PRESENT')}
               className="btn btn-sm btn-success"
+              style={{ padding: '4px 10px', fontSize: '0.76rem' }}
             >
               Present
             </button>
             <button
               onClick={() => handleApplyBulkStatus('ABSENT')}
               className="btn btn-sm btn-danger"
+              style={{ padding: '4px 10px', fontSize: '0.76rem' }}
             >
               Absent
             </button>
             <button
               onClick={() => handleApplyBulkStatus('HALF_DAY')}
               className="btn btn-sm btn-secondary"
+              style={{ padding: '4px 10px', fontSize: '0.76rem' }}
             >
               Half Day
             </button>
             <button
               onClick={() => handleApplyBulkStatus('WEEKLY_OFF')}
               className="btn btn-sm btn-secondary"
+              style={{ padding: '4px 10px', fontSize: '0.76rem' }}
             >
               Weekly Off
             </button>
             <button
               onClick={() => setSelectedWorkerIds([])}
               className="btn btn-sm btn-outline"
+              style={{ padding: '4px 10px', fontSize: '0.76rem' }}
             >
-              Cancel
+              Clear Selection
             </button>
           </div>
         </div>
       )}
 
       {/* Filter and Search Bar */}
-      <div className="filter-bar">
+      <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
         <div style={{ position: 'relative', width: '280px' }}>
           <Search
-            size={16}
-            style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}
+            size={15}
+            style={{
+              position: 'absolute',
+              left: '12px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              color: 'var(--text-muted)',
+            }}
           />
           <input
             type="text"
             className="form-control"
-            style={{ paddingLeft: '36px' }}
-            placeholder="Search worker code or name..."
+            style={{ paddingLeft: '36px', height: '36px', fontSize: '0.82rem' }}
+            placeholder="Search worker by code or name..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Filter size={16} color="var(--text-muted)" />
-          <select
-            className="form-control"
-            style={{ width: '180px' }}
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="ALL">All Statuses ({workers.length})</option>
-            <option value="NOT_MARKED">Not Marked ({summary.NOT_MARKED})</option>
-            <option value="PRESENT">Present ({summary.PRESENT})</option>
-            <option value="ABSENT">Absent ({summary.ABSENT})</option>
-            <option value="HALF_DAY">Half Day ({summary.HALF_DAY})</option>
-            <option value="ON_LEAVE">On Leave ({summary.ON_LEAVE})</option>
-            <option value="WEEKLY_OFF">Weekly Off ({summary.WEEKLY_OFF})</option>
-          </select>
-        </div>
+        <select
+          className="form-control"
+          style={{ width: '190px', height: '36px', fontSize: '0.82rem' }}
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+        >
+          <option value="ALL">All Statuses ({workers.length})</option>
+          <option value="NOT_MARKED">Not Marked ({summary.NOT_MARKED})</option>
+          <option value="PRESENT">Present ({summary.PRESENT})</option>
+          <option value="ABSENT">Absent ({summary.ABSENT})</option>
+          <option value="HALF_DAY">Half Day ({summary.HALF_DAY})</option>
+          <option value="ON_LEAVE">On Leave ({summary.ON_LEAVE})</option>
+          <option value="WEEKLY_OFF">Weekly Off ({summary.WEEKLY_OFF})</option>
+        </select>
       </div>
 
       {/* Workers Attendance Table */}
-      <div className="table-container">
-        {loading ? (
-          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-            Loading eligible workers for selected location and shift...
-          </div>
-        ) : filteredWorkers.length === 0 ? (
-          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-            No eligible workers match the selected parameters.
-          </div>
-        ) : (
+      {loading ? (
+        <TableSkeleton rows={8} cols={7} />
+      ) : filteredWorkers.length === 0 ? (
+        <EmptyState
+          icon={Users}
+          title="No eligible workers found"
+          description="No active assignments match this location, shift schedule, and date."
+        />
+      ) : (
+        <div className="table-container">
           <table className="data-table">
             <thead>
               <tr>
-                <th style={{ width: '40px', textAlign: 'center' }}>
+                <th style={{ width: '36px', textAlign: 'center' }}>
                   <input
                     type="checkbox"
-                    checked={selectedWorkerIds.length > 0 && selectedWorkerIds.length === filteredWorkers.length}
+                    checked={
+                      selectedWorkerIds.length > 0 &&
+                      selectedWorkerIds.length === filteredWorkers.length
+                    }
                     onChange={handleToggleSelectAll}
                     disabled={isFinalized}
                   />
                 </th>
                 <th>Worker Code</th>
-                <th>Full Name</th>
-                <th>Department / Role</th>
-                <th>Context / Policy Flags</th>
+                <th>Personnel</th>
+                <th>Department / Trade</th>
+                <th>Policy & Leave Flags</th>
                 <th>Inline Status Selector</th>
-                <th>Times & Overtime</th>
+                <th>Timings & Overtime</th>
                 <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filteredWorkers.map((w) => (
-                <tr
-                  key={w.workerId}
-                  style={{
-                    backgroundColor: selectedWorkerIds.includes(w.workerId)
-                      ? 'rgba(59, 130, 246, 0.05)'
-                      : w.currentStatus === 'NOT_MARKED'
-                      ? 'rgba(245, 158, 11, 0.02)'
-                      : undefined,
-                  }}
-                >
-                  <td style={{ textAlign: 'center' }}>
-                    <input
-                      type="checkbox"
-                      checked={selectedWorkerIds.includes(w.workerId)}
-                      onChange={() => handleToggleWorkerSelect(w.workerId)}
-                      disabled={isFinalized}
-                    />
-                  </td>
-                  <td>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--primary)' }}>
-                      {w.workerCode}
-                    </span>
-                  </td>
-                  <td>
-                    <div style={{ fontWeight: 600, color: '#FFF' }}>{w.fullName}</div>
-                    <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>{w.phone}</div>
-                  </td>
-                  <td>
-                    <div>{w.department}</div>
-                    <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>{w.roleTitle || w.skillCategory}</div>
-                  </td>
-                  <td>
-                    {w.hasApprovedLeave && (
-                      <span className="badge badge-on-leave" style={{ marginRight: '4px' }}>
-                        Approved Leave: {w.leaveDetails?.type}
+              {filteredWorkers.map((w) => {
+                const initials = w.fullName
+                  ? w.fullName
+                      .split(' ')
+                      .map((n) => n[0])
+                      .join('')
+                      .slice(0, 2)
+                      .toUpperCase()
+                  : 'W';
+
+                return (
+                  <tr
+                    key={w.workerId}
+                    style={{
+                      backgroundColor: selectedWorkerIds.includes(w.workerId)
+                        ? 'rgba(59, 130, 246, 0.05)'
+                        : w.currentStatus === 'NOT_MARKED'
+                        ? 'rgba(245, 158, 11, 0.02)'
+                        : undefined,
+                    }}
+                  >
+                    <td style={{ textAlign: 'center' }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedWorkerIds.includes(w.workerId)}
+                        onChange={() => handleToggleWorkerSelect(w.workerId)}
+                        disabled={isFinalized}
+                      />
+                    </td>
+                    <td>
+                      <span
+                        style={{
+                          fontFamily: 'var(--font-mono)',
+                          fontWeight: 600,
+                          fontSize: '0.82rem',
+                          color: 'var(--primary)',
+                          backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                          padding: '2px 7px',
+                          borderRadius: 'var(--radius-sm)',
+                          border: '1px solid rgba(59, 130, 246, 0.2)',
+                        }}
+                      >
+                        {w.workerCode}
                       </span>
-                    )}
-                    {w.isHoliday && (
-                      <span className="badge badge-holiday">
-                        Holiday: {w.holidayDetails?.name}
-                      </span>
-                    )}
-                    {!w.hasApprovedLeave && !w.isHoliday && (
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Standard Shift</span>
-                    )}
-                  </td>
-                  <td>
-                    <select
-                      className="form-control"
-                      style={{
-                        padding: '4px 8px',
-                        fontSize: '0.82rem',
-                        fontWeight: 600,
-                        width: '140px',
-                        borderColor:
-                          w.currentStatus === 'NOT_MARKED'
-                            ? 'var(--warning)'
-                            : w.currentStatus === 'PRESENT'
-                            ? 'var(--success)'
-                            : w.currentStatus === 'ABSENT'
-                            ? 'var(--danger)'
-                            : 'var(--border-subtle)',
-                      }}
-                      value={w.currentStatus}
-                      onChange={(e) => handleStatusChange(w.workerId, e.target.value)}
-                      disabled={isFinalized && !isAdmin}
-                    >
-                      <option value="NOT_MARKED">-- NOT MARKED --</option>
-                      <option value="PRESENT">Present</option>
-                      <option value="ABSENT">Absent</option>
-                      <option value="HALF_DAY">Half Day</option>
-                      <option value="ON_LEAVE">On Leave</option>
-                      <option value="WEEKLY_OFF">Weekly Off</option>
-                      <option value="HOLIDAY">Holiday</option>
-                    </select>
-                  </td>
-                  <td>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                      {w.checkIn ? `${w.checkIn} - ${w.checkOut || 'Active'}` : '—'}
-                    </div>
-                    {w.overtimeMinutes > 0 && (
-                      <div style={{ fontSize: '0.72rem', color: 'var(--warning)', fontWeight: 600 }}>
-                        + {w.overtimeMinutes} mins OT
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div
+                          style={{
+                            width: '28px',
+                            height: '28px',
+                            borderRadius: 'var(--radius-md)',
+                            backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            color: 'var(--text-secondary)',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {initials}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.86rem' }}>
+                            {w.fullName}
+                          </div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{w.phone}</div>
+                        </div>
                       </div>
-                    )}
-                  </td>
-                  <td style={{ textAlign: 'right' }}>
-                    <button
-                      onClick={() => {
-                        setActiveWorkerForDetail(w);
-                        setDetailModalOpen(true);
-                      }}
-                      className="btn btn-secondary btn-sm"
-                      title="Edit times, overtime and remarks"
-                    >
-                      <Edit3 size={14} /> Details
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td>
+                      <div style={{ fontSize: '0.82rem' }}>{w.department}</div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                        {w.roleTitle || w.skillCategory}
+                      </div>
+                    </td>
+                    <td>
+                      {w.hasApprovedLeave && (
+                        <span className="badge badge-on-leave" style={{ marginRight: '4px' }}>
+                          Approved Leave: {w.leaveDetails?.type}
+                        </span>
+                      )}
+                      {w.isHoliday && (
+                        <span className="badge badge-holiday">
+                          Holiday: {w.holidayDetails?.name}
+                        </span>
+                      )}
+                      {!w.hasApprovedLeave && !w.isHoliday && (
+                        <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                          Standard Shift
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      <select
+                        className="form-control"
+                        style={{
+                          padding: '4px 8px',
+                          fontSize: '0.8rem',
+                          fontWeight: 600,
+                          width: '135px',
+                          height: '32px',
+                          borderColor:
+                            w.currentStatus === 'NOT_MARKED'
+                              ? 'var(--warning)'
+                              : w.currentStatus === 'PRESENT'
+                              ? 'var(--success)'
+                              : w.currentStatus === 'ABSENT'
+                              ? 'var(--danger)'
+                              : 'var(--border-subtle)',
+                        }}
+                        value={w.currentStatus}
+                        onChange={(e) => handleStatusChange(w.workerId, e.target.value)}
+                        disabled={isFinalized && !isAdmin}
+                      >
+                        <option value="NOT_MARKED">-- NOT MARKED --</option>
+                        <option value="PRESENT">Present</option>
+                        <option value="ABSENT">Absent</option>
+                        <option value="HALF_DAY">Half Day</option>
+                        <option value="ON_LEAVE">On Leave</option>
+                        <option value="WEEKLY_OFF">Weekly Off</option>
+                        <option value="HOLIDAY">Holiday</option>
+                      </select>
+                    </td>
+                    <td>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                        {w.checkIn ? `${w.checkIn} - ${w.checkOut || 'Active'}` : '—'}
+                      </div>
+                      {w.overtimeMinutes > 0 && (
+                        <div style={{ fontSize: '0.72rem', color: 'var(--warning)', fontWeight: 600 }}>
+                          +{w.overtimeMinutes}m OT
+                        </div>
+                      )}
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <button
+                        onClick={() => {
+                          setActiveWorkerForDetail(w);
+                          setDetailModalOpen(true);
+                        }}
+                        className="btn btn-secondary btn-sm"
+                        style={{ padding: '4px 8px', fontSize: '0.76rem', gap: '4px' }}
+                        title="Edit check-in times and remarks"
+                      >
+                        <Edit3 size={13} />
+                        <span>Details</span>
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Review & Finalization Modal */}
       <Modal
         isOpen={reviewModalOpen}
         onClose={() => setReviewModalOpen(false)}
         title="Review & Save Attendance Batch"
+        subtitle="Confirm daily status records before committing to PostgreSQL database"
         maxWidth="600px"
         footer={
           <>
@@ -722,11 +864,7 @@ export const AttendancePage = () => {
             >
               Keep Editing
             </button>
-            <button
-              onClick={handleSaveBatch}
-              className="btn btn-secondary"
-              disabled={saving}
-            >
+            <button onClick={handleSaveBatch} className="btn btn-secondary" disabled={saving}>
               Save Draft
             </button>
             <button
@@ -739,41 +877,79 @@ export const AttendancePage = () => {
           </>
         }
       >
-        <div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div
             style={{
-              padding: '14px',
-              backgroundColor: 'rgba(255, 255, 255, 0.03)',
+              padding: '12px 16px',
+              backgroundColor: 'rgba(255, 255, 255, 0.02)',
               borderRadius: 'var(--radius-md)',
-              marginBottom: '20px',
-              fontSize: '0.86rem',
+              border: '1px solid var(--border-subtle)',
+              fontSize: '0.84rem',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+              gap: '8px',
             }}
           >
-            <p><strong>Work Location:</strong> {sites.find((s) => s.id === selectedSiteId)?.name}</p>
-            <p><strong>Shift:</strong> {shifts.find((s) => s.id === selectedShiftId)?.name}</p>
-            <p><strong>Attendance Date:</strong> {selectedDate}</p>
+            <div>
+              <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.74rem' }}>
+                Location
+              </span>
+              <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+                {sites.find((s) => s.id === selectedSiteId)?.name}
+              </span>
+            </div>
+            <div>
+              <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.74rem' }}>
+                Shift
+              </span>
+              <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+                {shifts.find((s) => s.id === selectedShiftId)?.name}
+              </span>
+            </div>
+            <div>
+              <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.74rem' }}>
+                Date
+              </span>
+              <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+                {selectedDate}
+              </span>
+            </div>
           </div>
 
-          <h4 style={{ fontSize: '0.92rem', fontWeight: 600, marginBottom: '12px' }}>
-            Batch Verification Summary
-          </h4>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginBottom: '20px' }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: '10px',
+            }}
+          >
             <div className="card" style={{ padding: '12px' }}>
-              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Total Eligible</span>
-              <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>{summary.TOTAL}</div>
+              <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Total Eligible</span>
+              <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                {summary.TOTAL}
+              </div>
             </div>
             <div className="card" style={{ padding: '12px' }}>
-              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Marked Workers</span>
-              <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--success)' }}>{summary.marked}</div>
+              <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Marked Personnel</span>
+              <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--success)' }}>
+                {summary.marked}
+              </div>
             </div>
             <div className="card" style={{ padding: '12px' }}>
-              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Present / Half Day</span>
-              <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>{summary.PRESENT} / {summary.HALF_DAY}</div>
+              <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Present / Half Day</span>
+              <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--primary)' }}>
+                {summary.PRESENT} / {summary.HALF_DAY}
+              </div>
             </div>
             <div className="card" style={{ padding: '12px' }}>
-              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Unmarked Workers</span>
-              <div style={{ fontSize: '1.2rem', fontWeight: 700, color: summary.NOT_MARKED > 0 ? 'var(--danger)' : 'var(--text-secondary)' }}>
+              <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Unmarked Personnel</span>
+              <div
+                style={{
+                  fontSize: '1.25rem',
+                  fontWeight: 700,
+                  color: summary.NOT_MARKED > 0 ? 'var(--danger)' : 'var(--text-muted)',
+                }}
+              >
                 {summary.NOT_MARKED}
               </div>
             </div>
@@ -785,18 +961,18 @@ export const AttendancePage = () => {
                 backgroundColor: 'var(--danger-bg)',
                 border: '1px solid var(--danger-border)',
                 color: 'var(--danger)',
-                padding: '12px',
+                padding: '12px 14px',
                 borderRadius: 'var(--radius-md)',
                 fontSize: '0.82rem',
                 display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
+                alignItems: 'flex-start',
+                gap: '10px',
               }}
             >
-              <AlertCircle size={18} />
-              <span>
-                <strong>Finalization Blocked:</strong> {summary.NOT_MARKED} worker(s) remain Not Marked. You can save as draft, but cannot finalize until all eligible workers have an explicit status.
-              </span>
+              <AlertCircle size={17} style={{ flexShrink: 0, marginTop: '2px' }} />
+              <div>
+                <strong>Finalization Blocked:</strong> {summary.NOT_MARKED} worker(s) remain Not Marked. You can save as a working draft, but cannot finalize until every eligible worker has an explicit status.
+              </div>
             </div>
           ) : (
             <div
@@ -804,17 +980,17 @@ export const AttendancePage = () => {
                 backgroundColor: 'var(--success-bg)',
                 border: '1px solid var(--success-border)',
                 color: 'var(--success)',
-                padding: '12px',
+                padding: '12px 14px',
                 borderRadius: 'var(--radius-md)',
                 fontSize: '0.82rem',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px',
+                gap: '10px',
               }}
             >
-              <CheckCircle2 size={18} />
+              <CheckCircle2 size={17} style={{ flexShrink: 0 }} />
               <span>
-                All eligible workers have been verified. Finalizing will lock these records and update organization payroll readiness.
+                All eligible workers have been verified. Finalizing will lock these records and update payroll calculations.
               </span>
             </div>
           )}
@@ -825,19 +1001,17 @@ export const AttendancePage = () => {
       <Modal
         isOpen={detailModalOpen}
         onClose={() => setDetailModalOpen(false)}
-        title={`Edit Attendance: ${activeWorkerForDetail?.fullName} (${activeWorkerForDetail?.workerCode})`}
+        title={`Attendance Record: ${activeWorkerForDetail?.fullName}`}
+        subtitle={`Worker code ${activeWorkerForDetail?.workerCode} • Shift details`}
         maxWidth="500px"
         footer={
-          <button
-            onClick={() => setDetailModalOpen(false)}
-            className="btn btn-primary"
-          >
+          <button onClick={() => setDetailModalOpen(false)} className="btn btn-primary">
             Apply Changes
           </button>
         }
       >
         {activeWorkerForDetail && (
-          <div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div className="form-group">
               <label className="form-label">Attendance Status</label>
               <select
@@ -861,7 +1035,7 @@ export const AttendancePage = () => {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div className="form-group">
-                <label className="form-label">Check In Time</label>
+                <label className="form-label">Check-In Time</label>
                 <input
                   type="text"
                   className="form-control"
@@ -872,7 +1046,9 @@ export const AttendancePage = () => {
                     setActiveWorkerForDetail((prev) => ({ ...prev, checkIn: val }));
                     setWorkers((prev) =>
                       prev.map((w) =>
-                        w.workerId === activeWorkerForDetail.workerId ? { ...w, checkIn: val, isDirty: true } : w,
+                        w.workerId === activeWorkerForDetail.workerId
+                          ? { ...w, checkIn: val, isDirty: true }
+                          : w,
                       ),
                     );
                   }}
@@ -880,7 +1056,7 @@ export const AttendancePage = () => {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Check Out Time</label>
+                <label className="form-label">Check-Out Time</label>
                 <input
                   type="text"
                   className="form-control"
@@ -891,7 +1067,9 @@ export const AttendancePage = () => {
                     setActiveWorkerForDetail((prev) => ({ ...prev, checkOut: val }));
                     setWorkers((prev) =>
                       prev.map((w) =>
-                        w.workerId === activeWorkerForDetail.workerId ? { ...w, checkOut: val, isDirty: true } : w,
+                        w.workerId === activeWorkerForDetail.workerId
+                          ? { ...w, checkOut: val, isDirty: true }
+                          : w,
                       ),
                     );
                   }}
@@ -911,7 +1089,9 @@ export const AttendancePage = () => {
                   setActiveWorkerForDetail((prev) => ({ ...prev, overtimeMinutes: val }));
                   setWorkers((prev) =>
                     prev.map((w) =>
-                      w.workerId === activeWorkerForDetail.workerId ? { ...w, overtimeMinutes: val, isDirty: true } : w,
+                      w.workerId === activeWorkerForDetail.workerId
+                        ? { ...w, overtimeMinutes: val, isDirty: true }
+                        : w,
                     ),
                   );
                 }}
@@ -923,14 +1103,16 @@ export const AttendancePage = () => {
               <textarea
                 className="form-control"
                 rows={3}
-                placeholder="Reason for late check-in or status override..."
+                placeholder="Reason for late check-in or manual override..."
                 value={activeWorkerForDetail.remarks || ''}
                 onChange={(e) => {
                   const val = e.target.value;
                   setActiveWorkerForDetail((prev) => ({ ...prev, remarks: val }));
                   setWorkers((prev) =>
                     prev.map((w) =>
-                      w.workerId === activeWorkerForDetail.workerId ? { ...w, remarks: val, isDirty: true } : w,
+                      w.workerId === activeWorkerForDetail.workerId
+                        ? { ...w, remarks: val, isDirty: true }
+                        : w,
                     ),
                   );
                 }}
@@ -944,36 +1126,30 @@ export const AttendancePage = () => {
       <Modal
         isOpen={reopenModalOpen}
         onClose={() => setReopenModalOpen(false)}
-        title="Authorize Reopening Finalized Attendance"
+        title="Authorize Reopening Finalized Batch"
+        subtitle="Unlocking recorded shifts requires an auditable justification"
         maxWidth="500px"
         footer={
           <>
-            <button
-              onClick={() => setReopenModalOpen(false)}
-              className="btn btn-secondary"
-            >
+            <button onClick={() => setReopenModalOpen(false)} className="btn btn-secondary">
               Cancel
             </button>
-            <button
-              onClick={handleReopen}
-              className="btn btn-danger"
-              disabled={saving}
-            >
+            <button onClick={handleReopen} className="btn btn-danger" disabled={saving}>
               {saving ? 'Unlocking...' : 'Authorize Reopening'}
             </button>
           </>
         }
       >
         <div>
-          <p style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-            Reopening finalized records will unlock this batch for supervisor modifications. This action is permanently audited in the system logs.
+          <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginBottom: '14px' }}>
+            Reopening finalized records will unlock this batch for supervisor modifications. This action is permanently logged in the audit trail.
           </p>
           <div className="form-group">
-            <label className="form-label">Mandatory Audit Reason</label>
+            <label className="form-label">Mandatory Audit Reason *</label>
             <textarea
               className="form-control"
               rows={3}
-              placeholder="e.g. Supervisor corrected late overtime dispute approved by site manager..."
+              placeholder="e.g. Supervisor corrected overtime dispute approved by site manager..."
               value={reopenReason}
               onChange={(e) => setReopenReason(e.target.value)}
               required

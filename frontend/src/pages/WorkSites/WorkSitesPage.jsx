@@ -4,6 +4,9 @@ import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
 import StatusBadge from '../../components/common/StatusBadge';
 import Modal from '../../components/common/Modal';
+import PageHeader from '../../components/common/PageHeader';
+import { TableSkeleton } from '../../components/common/LoadingSkeleton';
+import EmptyState from '../../components/common/EmptyState';
 import {
   MapPin,
   Plus,
@@ -15,6 +18,8 @@ import {
   Trash2,
   AlertTriangle,
   ShieldAlert,
+  Building,
+  X,
 } from 'lucide-react';
 
 export const WorkSitesPage = () => {
@@ -106,17 +111,12 @@ export const WorkSitesPage = () => {
     }
   };
 
-  // Bug Fix 3: Deactivate Location with Active Assignments Warning
-  const confirmDeactivate = async () => {
+  const handleDeactivateSite = async () => {
     if (!siteToDeactivate) return;
     setSubmitting(true);
     try {
-      const res = await apiClient.patch(`/sites/${siteToDeactivate.id}/deactivate`);
-      if (res.warning) {
-        showToast(res.warning, 'warning');
-      } else {
-        showToast(res.message, 'success');
-      }
+      await apiClient.patch(`/sites/${siteToDeactivate.id}`, { status: 'INACTIVE' });
+      showToast(`Location ${siteToDeactivate.name} deactivated.`, 'success');
       setDeactivateModalOpen(false);
       fetchSites();
     } catch (err) {
@@ -126,24 +126,12 @@ export const WorkSitesPage = () => {
     }
   };
 
-  // Bug Fix 3: Reactivate Location
-  const handleReactivate = async (site) => {
-    try {
-      const res = await apiClient.patch(`/sites/${site.id}/reactivate`);
-      showToast(res.message, 'success');
-      fetchSites();
-    } catch (err) {
-      showToast(err.message, 'error');
-    }
-  };
-
-  // Bug Fix 3: Safe Delete Location
-  const confirmDelete = async () => {
+  const handleDeleteSite = async () => {
     if (!siteToDelete) return;
     setSubmitting(true);
     try {
-      const res = await apiClient.delete(`/sites/${siteToDelete.id}`);
-      showToast(res.message, 'success');
+      await apiClient.delete(`/sites/${siteToDelete.id}`);
+      showToast('Work location removed.', 'success');
       setDeleteModalOpen(false);
       fetchSites();
     } catch (err) {
@@ -153,337 +141,487 @@ export const WorkSitesPage = () => {
     }
   };
 
+  const openEditModal = (site) => {
+    setActiveSiteForEdit(site);
+    setFormData({
+      name: site.name,
+      address: site.address,
+      description: site.description || '',
+      status: site.status,
+      supervisorIds: site.supervisors ? site.supervisors.map((s) => s.id) : [],
+    });
+    setEditModalOpen(true);
+  };
+
   return (
-    <div>
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Work Locations & Facilities</h1>
-          <p className="page-description">
-            Manage construction sites, manufacturing plants, warehouses and supervisor allocations
-          </p>
-        </div>
-
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <select
-            className="form-control"
-            style={{ width: '150px' }}
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="">All Locations</option>
-            <option value="ACTIVE">Active Only</option>
-            <option value="INACTIVE">Inactive Only</option>
-          </select>
-
-          {isAdmin && (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <PageHeader
+        title="Work Locations & Facilities"
+        description="Operational site registry with supervisor mapping and access boundaries"
+        actions={
+          isAdmin && (
             <button
               onClick={() => {
-                setFormData({ name: '', address: '', description: '', status: 'ACTIVE', supervisorIds: [] });
+                setFormData({
+                  name: '',
+                  address: '',
+                  description: '',
+                  status: 'ACTIVE',
+                  supervisorIds: [],
+                });
                 setCreateModalOpen(true);
               }}
-              className="btn btn-primary"
+              className="btn btn-primary btn-sm"
+              style={{ gap: '6px', height: '36px' }}
             >
-              <Plus size={16} /> Add Work Location
+              <Plus size={16} />
+              <span>New Work Location</span>
             </button>
-          )}
+          )
+        }
+      />
+
+      {/* Filter and Status Bar */}
+      <div
+        className="card"
+        style={{
+          padding: '14px 20px',
+          backgroundColor: 'var(--bg-surface, #111827)',
+          border: '1px solid var(--border-subtle)',
+          display: 'flex',
+          gap: '12px',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          justifyContent: 'space-between',
+        }}
+      >
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button
+            onClick={() => setStatusFilter('')}
+            className={`btn btn-sm ${statusFilter === '' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ fontSize: '0.8rem', padding: '6px 14px' }}
+          >
+            All Locations ({sites.length})
+          </button>
+          <button
+            onClick={() => setStatusFilter('ACTIVE')}
+            className={`btn btn-sm ${statusFilter === 'ACTIVE' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ fontSize: '0.8rem', padding: '6px 14px' }}
+          >
+            Active Only
+          </button>
+          <button
+            onClick={() => setStatusFilter('INACTIVE')}
+            className={`btn btn-sm ${statusFilter === 'INACTIVE' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ fontSize: '0.8rem', padding: '6px 14px' }}
+          >
+            Inactive Only
+          </button>
         </div>
+
+        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+          Operational scoping enforces site-level data isolation for supervisors
+        </span>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '20px' }}>
-        {loading ? (
-          <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
-            Loading work locations...
-          </div>
-        ) : sites.length === 0 ? (
-          <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-            No work locations found matching filter.
-          </div>
-        ) : (
-          sites.map((s) => (
+      {/* Locations Grid */}
+      {loading ? (
+        <TableSkeleton rows={4} cols={5} />
+      ) : sites.length === 0 ? (
+        <EmptyState
+          icon={MapPin}
+          title="No work locations found"
+          description="Create your organization's first operational facility or construction site."
+          action={
+            isAdmin && (
+              <button
+                onClick={() => setCreateModalOpen(true)}
+                className="btn btn-secondary btn-sm"
+                style={{ gap: '6px' }}
+              >
+                <Plus size={14} />
+                <span>Create Location</span>
+              </button>
+            )
+          }
+        />
+      ) : (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
+            gap: '16px',
+          }}
+        >
+          {sites.map((site) => (
             <div
-              key={s.id}
+              key={site.id}
               className="card"
               style={{
-                opacity: s.status === 'INACTIVE' ? 0.75 : 1,
-                border: s.status === 'INACTIVE' ? '1px dashed var(--border-medium)' : undefined,
+                padding: '20px',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                transition: 'all var(--transition-normal)',
+                border: site.status === 'INACTIVE' ? '1px dashed var(--border-medium)' : undefined,
+                opacity: site.status === 'INACTIVE' ? 0.75 : 1,
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                  <div
+              <div>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    justifyContent: 'space-between',
+                    marginBottom: '12px',
+                    gap: '12px',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div
+                      style={{
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: 'var(--radius-md)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        color: 'var(--primary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <MapPin size={18} />
+                    </div>
+                    <div>
+                      <h3 style={{ fontSize: '0.98rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {site.name}
+                      </h3>
+                      <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                        Site ID: {site.id.slice(0, 8)}...
+                      </span>
+                    </div>
+                  </div>
+                  <StatusBadge status={site.status} />
+                </div>
+
+                <p
+                  style={{
+                    fontSize: '0.82rem',
+                    color: 'var(--text-secondary)',
+                    marginBottom: '12px',
+                    lineHeight: 1.4,
+                  }}
+                >
+                  {site.address}
+                </p>
+
+                {site.description && (
+                  <p
                     style={{
-                      padding: '10px',
-                      borderRadius: '8px',
-                      backgroundColor: s.status === 'ACTIVE' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(100, 116, 139, 0.15)',
-                      color: s.status === 'ACTIVE' ? 'var(--primary)' : 'var(--text-muted)',
+                      fontSize: '0.76rem',
+                      color: 'var(--text-muted)',
+                      marginBottom: '14px',
+                      lineHeight: 1.4,
                     }}
                   >
-                    <MapPin size={22} />
-                  </div>
-                  <div>
-                    <h3 style={{ fontSize: '1.05rem', fontWeight: 600, color: '#FFF' }}>{s.name}</h3>
-                    <StatusBadge status={s.status} />
-                  </div>
-                </div>
-
-                {isAdmin && (
-                  <div style={{ display: 'flex', gap: '6px' }}>
-                    <button
-                      onClick={() => {
-                        setActiveSiteForEdit(s);
-                        setFormData({
-                          name: s.name,
-                          address: s.address,
-                          description: s.description || '',
-                          status: s.status,
-                          supervisorIds: s.supervisorSites ? s.supervisorSites.map((ss) => ss.userId) : [],
-                        });
-                        setEditModalOpen(true);
-                      }}
-                      className="btn btn-secondary btn-sm"
-                      title="Edit location details"
-                    >
-                      <Edit size={14} />
-                    </button>
-
-                    {/* Bug Fix 3: Reactivate / Deactivate buttons */}
-                    {s.status === 'ACTIVE' ? (
-                      <button
-                        onClick={() => {
-                          setSiteToDeactivate(s);
-                          setDeactivateModalOpen(true);
-                        }}
-                        className="btn btn-outline btn-sm"
-                        style={{ color: 'var(--danger)', borderColor: 'var(--danger-border)' }}
-                        title="Deactivate location"
-                      >
-                        <XCircle size={14} />
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleReactivate(s)}
-                        className="btn btn-outline btn-sm"
-                        style={{ color: 'var(--success)', borderColor: 'var(--success-border)' }}
-                        title="Reactivate location"
-                      >
-                        <CheckCircle size={14} />
-                      </button>
-                    )}
-
-                    {/* Bug Fix 3: Delete option */}
-                    <button
-                      onClick={() => {
-                        setSiteToDelete(s);
-                        setDeleteModalOpen(true);
-                      }}
-                      className="btn btn-outline btn-sm"
-                      style={{ color: 'var(--danger)' }}
-                      title="Delete permanently (only if unreferenced)"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
+                    {site.description}
+                  </p>
                 )}
-              </div>
 
-              <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginBottom: '14px' }}>
-                {s.address}
-              </p>
-
-              {s.description && (
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
-                  {s.description}
-                </p>
-              )}
-
-              <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '14px', marginTop: '14px' }}>
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '6px' }}>
-                  Assigned Site Supervisors:
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                  {s.supervisorSites && s.supervisorSites.length > 0 ? (
-                    s.supervisorSites.map((ss) => (
-                      <span
-                        key={ss.id}
-                        style={{
-                          fontSize: '0.75rem',
-                          padding: '3px 8px',
-                          backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                          borderRadius: 'var(--radius-sm)',
-                          border: '1px solid var(--border-subtle)',
-                          color: 'var(--text-primary)',
-                        }}
-                      >
-                        {ss.user?.fullName}
-                      </span>
-                    ))
+                {/* Supervisor badges */}
+                <div
+                  style={{
+                    paddingTop: '12px',
+                    borderTop: '1px solid var(--border-subtle)',
+                    marginBottom: '14px',
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: '0.72rem',
+                      color: 'var(--text-muted)',
+                      display: 'block',
+                      marginBottom: '6px',
+                    }}
+                  >
+                    Assigned Supervisors:
+                  </span>
+                  {site.supervisors && site.supervisors.length > 0 ? (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {site.supervisors.map((sup) => (
+                        <span
+                          key={sup.id}
+                          style={{
+                            fontSize: '0.72rem',
+                            fontWeight: 600,
+                            padding: '2px 8px',
+                            borderRadius: 'var(--radius-full)',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            color: 'var(--success)',
+                            border: '1px solid rgba(16, 185, 129, 0.25)',
+                          }}
+                        >
+                          {sup.fullName}
+                        </span>
+                      ))}
+                    </div>
                   ) : (
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>None assigned</span>
+                    <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                      No supervisors assigned
+                    </span>
                   )}
                 </div>
               </div>
-            </div>
-          ))
-        )}
-      </div>
 
-      {/* Create Location Modal */}
+              {/* Action Buttons */}
+              {isAdmin && (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'flex-end',
+                    gap: '8px',
+                    paddingTop: '12px',
+                    borderTop: '1px solid var(--border-subtle)',
+                  }}
+                >
+                  <button
+                    onClick={() => openEditModal(site)}
+                    className="btn btn-secondary btn-sm"
+                    style={{ padding: '4px 10px', fontSize: '0.76rem', gap: '4px' }}
+                  >
+                    <Edit size={13} />
+                    <span>Edit</span>
+                  </button>
+
+                  {site.status === 'ACTIVE' ? (
+                    <button
+                      onClick={() => {
+                        setSiteToDeactivate(site);
+                        setDeactivateModalOpen(true);
+                      }}
+                      className="btn btn-outline btn-sm"
+                      style={{
+                        padding: '4px 10px',
+                        fontSize: '0.76rem',
+                        color: 'var(--warning)',
+                        borderColor: 'rgba(245, 158, 11, 0.3)',
+                      }}
+                    >
+                      Deactivate
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setSiteToDelete(site);
+                        setDeleteModalOpen(true);
+                      }}
+                      className="btn btn-outline btn-sm"
+                      style={{
+                        padding: '4px 10px',
+                        fontSize: '0.76rem',
+                        color: 'var(--danger)',
+                        borderColor: 'rgba(239, 68, 68, 0.3)',
+                      }}
+                    >
+                      <Trash2 size={13} />
+                      <span>Delete</span>
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Create Site Modal */}
       <Modal
         isOpen={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
         title="Add New Work Location"
-        maxWidth="520px"
+        subtitle="Establish an operational site facility with assigned site managers"
+        maxWidth="540px"
         footer={
           <>
-            <button onClick={() => setCreateModalOpen(false)} className="btn btn-secondary">
+            <button
+              type="button"
+              onClick={() => setCreateModalOpen(false)}
+              className="btn btn-secondary"
+            >
               Cancel
             </button>
             <button
+              type="button"
               onClick={handleCreateSite}
               className="btn btn-primary"
               disabled={submitting || !formData.name || !formData.address}
             >
-              {submitting ? 'Creating...' : 'Save Location'}
+              {submitting ? 'Creating...' : 'Create Location'}
             </button>
           </>
         }
       >
         <form onSubmit={handleCreateSite}>
-          <div className="form-group">
-            <label className="form-label">Location Name *</label>
-            <input
-              type="text"
-              className="form-control"
-              placeholder="e.g. Apex Tower Construction"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              required
-            />
-          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div className="form-group">
+              <label className="form-label">Site Name *</label>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="e.g. North District Plant Block 4"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                required
+              />
+            </div>
 
-          <div className="form-group">
-            <label className="form-label">Address *</label>
-            <textarea
-              className="form-control"
-              rows={2}
-              placeholder="Physical street address..."
-              value={formData.address}
-              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-              required
-            />
-          </div>
+            <div className="form-group">
+              <label className="form-label">Physical Address / Geo Reference *</label>
+              <textarea
+                className="form-control"
+                rows={2}
+                placeholder="Full operational facility address or plot coordinates..."
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                required
+              />
+            </div>
 
-          <div className="form-group">
-            <label className="form-label">Description / Scope</label>
-            <input
-              type="text"
-              className="form-control"
-              placeholder="e.g. High-rise commercial development"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            />
-          </div>
+            <div className="form-group">
+              <label className="form-label">Facility Description</label>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="e.g. Heavy manufacturing & fabrication facility"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              />
+            </div>
 
-          <div className="form-group">
-            <label className="form-label">Assign Supervisors</label>
-            <select
-              multiple
-              className="form-control"
-              style={{ minHeight: '100px' }}
-              value={formData.supervisorIds}
-              onChange={(e) => {
-                const selected = Array.from(e.target.selectedOptions, (option) => option.value);
-                setFormData({ ...formData, supervisorIds: selected });
-              }}
-            >
-              {supervisors.map((sup) => (
-                <option key={sup.id} value={sup.id}>
-                  {sup.fullName} ({sup.email})
-                </option>
-              ))}
-            </select>
-            <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
-              Hold Ctrl (or Cmd) to select multiple supervisors
-            </span>
+            <div className="form-group">
+              <label className="form-label">Assign Supervisors (Multi-Select)</label>
+              <select
+                multiple
+                className="form-control"
+                style={{ height: '90px' }}
+                value={formData.supervisorIds}
+                onChange={(e) => {
+                  const opts = Array.from(e.target.selectedOptions, (o) => o.value);
+                  setFormData({ ...formData, supervisorIds: opts });
+                }}
+              >
+                {supervisors.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.fullName} ({s.email})
+                  </option>
+                ))}
+              </select>
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                Hold Ctrl (Windows) / Cmd (Mac) to select multiple supervisors.
+              </span>
+            </div>
           </div>
         </form>
       </Modal>
 
-      {/* Edit Location Modal */}
-      <Modal
-        isOpen={editModalOpen}
-        onClose={() => setEditModalOpen(false)}
-        title="Edit Work Location"
-        maxWidth="520px"
-        footer={
-          <>
-            <button onClick={() => setEditModalOpen(false)} className="btn btn-secondary">
-              Cancel
-            </button>
-            <button
-              onClick={handleUpdateSite}
-              className="btn btn-primary"
-              disabled={submitting || !formData.name || !formData.address}
-            >
-              {submitting ? 'Updating...' : 'Update Location'}
-            </button>
-          </>
-        }
-      >
-        <form onSubmit={handleUpdateSite}>
-          <div className="form-group">
-            <label className="form-label">Location Name *</label>
-            <input
-              type="text"
-              className="form-control"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              required
-            />
-          </div>
+      {/* Edit Site Modal */}
+      {activeSiteForEdit && (
+        <Modal
+          isOpen={editModalOpen}
+          onClose={() => setEditModalOpen(false)}
+          title={`Edit Location: ${activeSiteForEdit.name}`}
+          maxWidth="540px"
+          footer={
+            <>
+              <button
+                type="button"
+                onClick={() => setEditModalOpen(false)}
+                className="btn btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleUpdateSite}
+                className="btn btn-primary"
+                disabled={submitting || !formData.name || !formData.address}
+              >
+                {submitting ? 'Saving...' : 'Save Changes'}
+              </button>
+            </>
+          }
+        >
+          <form onSubmit={handleUpdateSite}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div className="form-group">
+                <label className="form-label">Site Name *</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  required
+                />
+              </div>
 
-          <div className="form-group">
-            <label className="form-label">Address *</label>
-            <textarea
-              className="form-control"
-              rows={2}
-              value={formData.address}
-              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-              required
-            />
-          </div>
+              <div className="form-group">
+                <label className="form-label">Physical Address *</label>
+                <textarea
+                  className="form-control"
+                  rows={2}
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  required
+                />
+              </div>
 
-          <div className="form-group">
-            <label className="form-label">Description</label>
-            <input
-              type="text"
-              className="form-control"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            />
-          </div>
+              <div className="form-group">
+                <label className="form-label">Operational Status</label>
+                <select
+                  className="form-control"
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                >
+                  <option value="ACTIVE">ACTIVE</option>
+                  <option value="INACTIVE">INACTIVE</option>
+                </select>
+              </div>
 
-          <div className="form-group">
-            <label className="form-label">Assign Supervisors</label>
-            <select
-              multiple
-              className="form-control"
-              style={{ minHeight: '100px' }}
-              value={formData.supervisorIds}
-              onChange={(e) => {
-                const selected = Array.from(e.target.selectedOptions, (option) => option.value);
-                setFormData({ ...formData, supervisorIds: selected });
-              }}
-            >
-              {supervisors.map((sup) => (
-                <option key={sup.id} value={sup.id}>
-                  {sup.fullName} ({sup.email})
-                </option>
-              ))}
-            </select>
-          </div>
-        </form>
-      </Modal>
+              <div className="form-group">
+                <label className="form-label">Facility Description</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Assign Supervisors</label>
+                <select
+                  multiple
+                  className="form-control"
+                  style={{ height: '90px' }}
+                  value={formData.supervisorIds}
+                  onChange={(e) => {
+                    const opts = Array.from(e.target.selectedOptions, (o) => o.value);
+                    setFormData({ ...formData, supervisorIds: opts });
+                  }}
+                >
+                  {supervisors.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.fullName} ({s.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </form>
+        </Modal>
+      )}
 
       {/* Deactivate Warning Modal */}
       {siteToDeactivate && (
@@ -491,34 +629,34 @@ export const WorkSitesPage = () => {
           isOpen={deactivateModalOpen}
           onClose={() => setDeactivateModalOpen(false)}
           title="Deactivate Work Location"
-          maxWidth="480px"
+          maxWidth="460px"
           footer={
             <>
-              <button onClick={() => setDeactivateModalOpen(false)} className="btn btn-secondary" disabled={submitting}>
+              <button
+                type="button"
+                onClick={() => setDeactivateModalOpen(false)}
+                className="btn btn-secondary"
+              >
                 Cancel
               </button>
-              <button onClick={confirmDeactivate} className="btn btn-danger" disabled={submitting}>
-                {submitting ? 'Deactivating...' : 'Confirm Deactivation'}
+              <button
+                type="button"
+                onClick={handleDeactivateSite}
+                className="btn btn-danger"
+                disabled={submitting}
+              >
+                {submitting ? 'Deactivating...' : 'Deactivate Location'}
               </button>
             </>
           }
         >
           <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
             <div style={{ color: 'var(--warning)', flexShrink: 0 }}>
-              <AlertTriangle size={28} />
+              <AlertTriangle size={26} />
             </div>
-            <div>
-              <p style={{ fontSize: '0.88rem', color: 'var(--text-primary)', marginBottom: '8px' }}>
-                Are you sure you want to deactivate <strong>{siteToDeactivate.name}</strong>?
-              </p>
-              <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                • This location will immediately be hidden from worker registration, assignment dropdowns and attendance marking.
-                <br />
-                • Historical attendance, payroll and past assignments will be safely preserved.
-                <br />
-                • You can reactivate this location at any time.
-              </p>
-            </div>
+            <p style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              Deactivating <strong>{siteToDeactivate.name}</strong> will prevent new worker allocations to this site. Historical attendance, payroll and assignment records will remain intact.
+            </p>
           </div>
         </Modal>
       )}
@@ -528,31 +666,35 @@ export const WorkSitesPage = () => {
         <Modal
           isOpen={deleteModalOpen}
           onClose={() => setDeleteModalOpen(false)}
-          title="Delete Work Location"
-          maxWidth="480px"
+          title="Remove Work Location"
+          maxWidth="460px"
           footer={
             <>
-              <button onClick={() => setDeleteModalOpen(false)} className="btn btn-secondary" disabled={submitting}>
+              <button
+                type="button"
+                onClick={() => setDeleteModalOpen(false)}
+                className="btn btn-secondary"
+              >
                 Cancel
               </button>
-              <button onClick={confirmDelete} className="btn btn-danger" disabled={submitting}>
-                {submitting ? 'Deleting...' : 'Delete Permanently'}
+              <button
+                type="button"
+                onClick={handleDeleteSite}
+                className="btn btn-danger"
+                disabled={submitting}
+              >
+                {submitting ? 'Removing...' : 'Delete Location'}
               </button>
             </>
           }
         >
           <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
             <div style={{ color: 'var(--danger)', flexShrink: 0 }}>
-              <ShieldAlert size={28} />
+              <ShieldAlert size={26} />
             </div>
-            <div>
-              <p style={{ fontSize: '0.88rem', color: 'var(--text-primary)', marginBottom: '8px' }}>
-                Attempting permanent deletion of <strong>{siteToDelete.name}</strong>.
-              </p>
-              <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                Permanent deletion is strictly restricted to locations with zero historical records. If any workers or attendance records were ever logged at this location, the system will block deletion and require deactivation instead.
-              </p>
-            </div>
+            <p style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              Are you sure you want to permanently delete <strong>{siteToDelete.name}</strong>? Sites with linked historical attendance or payroll records cannot be deleted.
+            </p>
           </div>
         </Modal>
       )}

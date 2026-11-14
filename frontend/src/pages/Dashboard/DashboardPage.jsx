@@ -4,6 +4,7 @@ import apiClient from '../../api/client';
 import aiApi from '../../api/ai';
 import { useAuth } from '../../context/AuthContext';
 import StatCard from '../../components/common/StatCard';
+import { CardSkeleton } from '../../components/common/LoadingSkeleton';
 import {
   Users,
   UserCheck,
@@ -22,6 +23,8 @@ import {
   CheckCircle2,
   RefreshCw,
   Bot,
+  Shield,
+  Layers,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -33,7 +36,6 @@ import {
   CartesianGrid,
   BarChart,
   Bar,
-  Legend,
 } from 'recharts';
 
 export const DashboardPage = () => {
@@ -57,117 +59,196 @@ export const DashboardPage = () => {
     }
   };
 
+  const fetchDashboard = async () => {
+    try {
+      setLoading(true);
+      const data = await apiClient.get('/reports/dashboard-stats');
+      setStats(data);
+    } catch (err) {
+      setError(err.message || 'Failed to fetch dashboard data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchDashboard = async () => {
-      try {
-        setLoading(true);
-        const data = await apiClient.get('/reports/dashboard-stats');
-        setStats(data);
-      } catch (err) {
-        setError(err.message || 'Failed to fetch dashboard data');
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchDashboard();
     fetchAiInsights();
   }, []);
 
   if (loading) {
     return (
-      <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-        Loading enterprise dashboard data...
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <div style={{ height: '36px', width: '280px' }} className="skeleton" />
+        <CardSkeleton count={4} />
+        <div style={{ height: '280px', width: '100%', borderRadius: 'var(--radius-lg)' }} className="skeleton" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="card" style={{ color: 'var(--danger)', padding: '24px' }}>
-        Error: {error}
+      <div
+        className="card"
+        style={{
+          color: 'var(--danger)',
+          backgroundColor: 'var(--danger-bg)',
+          borderColor: 'var(--danger-border)',
+          padding: '24px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+        }}
+      >
+        <AlertTriangle size={24} />
+        <div>
+          <h3 style={{ fontSize: '1rem', fontWeight: 600 }}>Failed to Load Dashboard</h3>
+          <p style={{ fontSize: '0.84rem', marginTop: '4px' }}>{error}</p>
+        </div>
       </div>
     );
   }
 
+  const attentionCount = aiInsights?.actionableIssues?.length || 0;
+
   return (
-    <div>
-      <div className="page-header">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      {/* Top Page Header */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '16px',
+        }}
+      >
         <div>
-          <h1 className="page-title">
-            {isAdmin ? 'Executive Workforce Dashboard' : 'Site Supervisor Dashboard'}
-          </h1>
-          <p className="page-description">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <h1 className="page-title" style={{ fontSize: '1.4rem' }}>
+              {isAdmin ? 'Executive Command Center' : 'Site Supervisor Operations'}
+            </h1>
+            <span
+              style={{
+                fontSize: '0.65rem',
+                fontWeight: 700,
+                padding: '2px 8px',
+                borderRadius: 'var(--radius-full)',
+                backgroundColor: 'rgba(59, 130, 246, 0.12)',
+                border: '1px solid rgba(59, 130, 246, 0.3)',
+                color: 'var(--primary)',
+                letterSpacing: '0.04em',
+              }}
+            >
+              LIVE SYNCHRONIZATION
+            </span>
+          </div>
+          <p className="page-description" style={{ marginTop: '4px' }}>
             {isAdmin
-              ? 'Organization-wide live labour statistics, attendance velocity and payroll summaries'
-              : `Site-scoped view for assigned locations: ${user?.assignedSites?.map((s) => s.name).join(', ') || 'No locations assigned'}`}
+              ? 'Organization-wide live workforce deployment, attendance velocity and financial operations'
+              : `Operational view for assigned locations: ${
+                  user?.assignedSites?.map((s) => s.name).join(', ') || 'Assigned Facilities'
+                }`}
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           <button
             onClick={() => navigate('/attendance')}
-            className="btn btn-primary"
+            className="btn btn-primary btn-sm"
+            style={{ gap: '6px', height: '36px', padding: '0 14px' }}
           >
-            <CalendarCheck2 size={16} /> Mark Today's Attendance
+            <CalendarCheck2 size={16} />
+            <span>Mark Today's Attendance</span>
           </button>
           <button
             onClick={() => navigate('/workers')}
-            className="btn btn-secondary"
+            className="btn btn-secondary btn-sm"
+            style={{ gap: '6px', height: '36px', padding: '0 14px' }}
           >
-            <Users size={16} /> Workers Directory
+            <Users size={16} />
+            <span>Workers Directory</span>
           </button>
         </div>
       </div>
 
-      {/* AI Operations Command Center Banner */}
+      {/* AI Operations Command Center Strip */}
       <div
         style={{
-          background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(139, 92, 246, 0.08) 100%)',
+          backgroundColor: 'rgba(17, 24, 39, 0.75)',
           border: '1px solid rgba(59, 130, 246, 0.3)',
           borderRadius: 'var(--radius-lg)',
-          padding: '20px 24px',
-          marginBottom: '24px',
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)',
+          padding: '18px 22px',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.35)',
+          position: 'relative',
+          overflow: 'hidden',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '2px',
+            background: 'linear-gradient(90deg, var(--primary) 0%, #8B5CF6 100%)',
+          }}
+        />
+
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '12px',
+            flexWrap: 'wrap',
+            gap: '12px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div
               style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '8px',
-                backgroundColor: 'rgba(59, 130, 246, 0.25)',
+                width: '36px',
+                height: '36px',
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: 'rgba(59, 130, 246, 0.15)',
+                border: '1px solid rgba(59, 130, 246, 0.3)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 color: 'var(--primary)',
+                flexShrink: 0,
               }}
             >
               <Sparkles size={18} />
             </div>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontWeight: 700, fontSize: '0.98rem', color: 'var(--text-primary)' }}>
-                  AI Operations Command Center
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <span style={{ fontWeight: 700, fontSize: '0.96rem', color: 'var(--text-primary)' }}>
+                  AI Operations Intelligence
                 </span>
                 <span
                   style={{
-                    fontSize: '0.68rem',
+                    fontSize: '0.65rem',
                     fontWeight: 700,
                     textTransform: 'uppercase',
                     padding: '2px 8px',
                     borderRadius: 'var(--radius-full)',
-                    backgroundColor: (aiInsights?.actionableIssues?.length || 0) > 0 ? 'rgba(245, 158, 11, 0.15)' : 'rgba(16, 185, 129, 0.15)',
-                    color: (aiInsights?.actionableIssues?.length || 0) > 0 ? 'var(--warning)' : 'var(--success)',
-                    border: `1px solid ${(aiInsights?.actionableIssues?.length || 0) > 0 ? 'var(--warning-border)' : 'var(--success-border)'}`,
+                    backgroundColor:
+                      attentionCount > 0 ? 'rgba(245, 158, 11, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                    color: attentionCount > 0 ? 'var(--warning)' : 'var(--success)',
+                    border: `1px solid ${
+                      attentionCount > 0 ? 'var(--warning-border)' : 'var(--success-border)'
+                    }`,
                   }}
                 >
-                  {(aiInsights?.actionableIssues?.length || 0) > 0 ? `${aiInsights.actionableIssues.length} Attention Item(s)` : 'All Systems Optimal'}
+                  {attentionCount > 0
+                    ? `${attentionCount} Attention Item${attentionCount > 1 ? 's' : ''}`
+                    : 'All Operations Optimal'}
                 </span>
               </div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                Live operational intelligence synthesized from PostgreSQL tables &bull; Updated just now
+              <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                Synthesized live from PostgreSQL transactional tables &bull; Groq Function Calling
               </div>
             </div>
           </div>
@@ -178,15 +259,15 @@ export const DashboardPage = () => {
               disabled={loadingAi}
               className="btn btn-secondary btn-sm"
               title="Refresh AI Insights"
-              style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
+              style={{ gap: '5px' }}
             >
-              <RefreshCw size={13} />
-              <span>Refresh</span>
+              <RefreshCw size={13} className={loadingAi ? 'spin' : ''} />
+              <span>{loadingAi ? 'Analyzing...' : 'Refresh'}</span>
             </button>
             <button
               onClick={() => navigate('/ai-assistant')}
               className="btn btn-primary btn-sm"
-              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+              style={{ gap: '6px' }}
             >
               <Bot size={14} />
               <span>Ask AI Assistant</span>
@@ -194,9 +275,9 @@ export const DashboardPage = () => {
           </div>
         </div>
 
-        {/* Actionable Issues / Insights Strip */}
+        {/* Actionable Issues or Optimal Status */}
         {aiInsights?.actionableIssues && aiInsights.actionableIssues.length > 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
             {aiInsights.actionableIssues.map((issue, idx) => (
               <div
                 key={idx}
@@ -204,33 +285,33 @@ export const DashboardPage = () => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  padding: '10px 14px',
-                  backgroundColor: 'rgba(0, 0, 0, 0.25)',
+                  padding: '9px 14px',
+                  backgroundColor: 'rgba(0, 0, 0, 0.3)',
                   borderRadius: 'var(--radius-md)',
-                  border: '1px solid rgba(255, 255, 255, 0.06)',
-                  fontSize: '0.84rem',
+                  border: '1px solid rgba(255, 255, 255, 0.05)',
+                  fontSize: '0.82rem',
+                  gap: '12px',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
-                  <AlertTriangle size={15} color="var(--warning)" />
+                  <AlertTriangle size={15} color="var(--warning)" style={{ flexShrink: 0 }} />
                   <span>{issue}</span>
                 </div>
                 <button
                   onClick={() => {
-                    if (issue.includes('attendance')) navigate('/attendance');
-                    else if (issue.includes('leave')) navigate('/leave');
-                    else if (issue.includes('assignment')) navigate('/assignments');
+                    if (issue.toLowerCase().includes('attendance')) navigate('/attendance');
+                    else if (issue.toLowerCase().includes('leave')) navigate('/leave');
+                    else if (issue.toLowerCase().includes('assignment')) navigate('/assignments');
                     else navigate('/ai-assistant');
                   }}
+                  className="btn btn-outline btn-sm"
                   style={{
-                    backgroundColor: 'rgba(59, 130, 246, 0.15)',
-                    color: '#93C5FD',
-                    border: '1px solid rgba(59, 130, 246, 0.3)',
-                    borderRadius: 'var(--radius-sm)',
-                    padding: '4px 10px',
-                    fontSize: '0.78rem',
-                    cursor: 'pointer',
-                    fontWeight: 600,
+                    padding: '3px 10px',
+                    fontSize: '0.74rem',
+                    color: 'var(--primary)',
+                    borderColor: 'rgba(59, 130, 246, 0.35)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                    whiteSpace: 'nowrap',
                   }}
                 >
                   Resolve Now &rarr;
@@ -244,35 +325,38 @@ export const DashboardPage = () => {
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
-              padding: '10px 14px',
+              padding: '9px 14px',
               backgroundColor: 'rgba(16, 185, 129, 0.08)',
               borderRadius: 'var(--radius-md)',
               border: '1px solid var(--success-border)',
               color: 'var(--success)',
-              fontSize: '0.84rem',
+              fontSize: '0.82rem',
+              marginTop: '10px',
             }}
           >
             <CheckCircle2 size={16} />
-            <span>Attendance is current, all active workers have assignments, and no pending leave alerts detected.</span>
+            <span>Attendance records are aligned, all active workers have assignments, and no pending leave alerts detected.</span>
           </div>
         )}
       </div>
 
-      {/* KPI Cards Grid */}
+      {/* Main KPI Row */}
       <div className="stats-grid">
         <StatCard
           title="Total Workforce"
           value={stats?.totalWorkers || 0}
-          subtitle={`${stats?.activeWorkers || 0} Active / ${stats?.inactiveWorkers || 0} Inactive`}
+          subtitle={`${stats?.activeWorkers || 0} Active • ${stats?.inactiveWorkers || 0} Inactive`}
           icon={Users}
           color="var(--primary)"
+          onClick={() => navigate('/workers')}
         />
         <StatCard
           title="Present Today"
           value={stats?.presentToday || 0}
-          subtitle={`${stats?.halfDayToday || 0} Half Day`}
+          subtitle={`${stats?.halfDayToday || 0} Half Day Recorded`}
           icon={UserCheck}
           color="var(--success)"
+          onClick={() => navigate('/attendance')}
         />
         <StatCard
           title="Absent Today"
@@ -280,30 +364,37 @@ export const DashboardPage = () => {
           subtitle={`${stats?.onLeaveToday || 0} on Approved Leave`}
           icon={UserX}
           color="var(--danger)"
+          onClick={() => navigate('/attendance')}
         />
         <StatCard
-          title="Attendance Rate"
+          title="Attendance Velocity"
           value={`${stats?.attendancePercentage || 0}%`}
-          subtitle="Based on eligible assigned workforce"
+          subtitle="Assigned workforce participation"
           icon={TrendingUp}
           color="var(--info)"
+          trend={{
+            isPositive: (stats?.attendancePercentage || 0) >= 75,
+            label: `${stats?.attendancePercentage || 0}% rate`,
+          }}
         />
 
         {isAdmin && (
           <>
             <StatCard
               title="Payroll Expenditure"
-              value={`₹${parseFloat(stats?.totalPayrollExpenditure || '0').toLocaleString()}`}
-              subtitle="Total calculated payroll runs"
+              value={`₹${parseFloat(stats?.totalPayrollExpenditure || '0').toLocaleString('en-IN')}`}
+              subtitle="Calculated period wages"
               icon={Banknote}
               color="var(--purple)"
+              onClick={() => navigate('/payroll')}
             />
             <StatCard
               title="Disbursed Payments"
-              value={`₹${parseFloat(stats?.totalDisbursed || '0').toLocaleString()}`}
-              subtitle={`₹${parseFloat(stats?.outstandingPayable || '0').toLocaleString()} Outstanding`}
+              value={`₹${parseFloat(stats?.totalDisbursed || '0').toLocaleString('en-IN')}`}
+              subtitle={`₹${parseFloat(stats?.outstandingPayable || '0').toLocaleString('en-IN')} Outstanding`}
               icon={Receipt}
               color="var(--success)"
+              onClick={() => navigate('/payments')}
             />
           </>
         )}
@@ -314,97 +405,117 @@ export const DashboardPage = () => {
           subtitle="Awaiting supervisor review"
           icon={CalendarDays}
           color="var(--warning)"
+          onClick={() => navigate('/leave')}
         />
 
         <StatCard
           title="Work Locations"
           value={stats?.totalSites || 0}
-          subtitle={isAdmin ? 'Active project sites' : 'Assigned supervisor sites'}
+          subtitle={isAdmin ? 'Active operational sites' : 'Assigned supervisor facilities'}
           icon={MapPin}
           color="var(--primary)"
+          onClick={() => navigate('/sites')}
         />
       </div>
 
-      {/* Charts Section */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '20px', marginBottom: '24px' }}>
+      {/* Analytics Charts Grid */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(440px, 1fr))',
+          gap: '20px',
+        }}
+      >
         {/* Attendance Trend Line/Area Chart */}
-        <div className="card">
-          <div className="card-header">
+        <div className="card" style={{ padding: '22px' }}>
+          <div className="card-header" style={{ marginBottom: '16px' }}>
             <div>
-              <h3 className="card-title">Attendance Trends (Last 7 Days)</h3>
-              <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                Daily count of Present, Absent and Half-Day personnel
+              <h3 className="card-title" style={{ fontSize: '0.98rem' }}>Attendance Trends (Last 7 Days)</h3>
+              <p style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                Shift-level participation: Present vs Absent headcount
               </p>
             </div>
+            <div style={{ display: 'flex', gap: '12px', fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--success)' }} />
+                Present
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--danger)' }} />
+                Absent
+              </span>
+            </div>
           </div>
-          <div style={{ height: '280px', width: '100%' }}>
+          <div style={{ height: '260px', width: '100%' }}>
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={stats?.attendanceTrend || []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <AreaChart data={stats?.attendanceTrend || []} margin={{ top: 8, right: 12, left: -22, bottom: 0 }}>
                 <defs>
                   <linearGradient id="presentGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--success)" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="var(--success)" stopOpacity={0} />
+                    <stop offset="5%" stopColor="var(--success)" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="var(--success)" stopOpacity={0.02} />
                   </linearGradient>
                   <linearGradient id="absentGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--danger)" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="var(--danger)" stopOpacity={0} />
+                    <stop offset="5%" stopColor="var(--danger)" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="var(--danger)" stopOpacity={0.02} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                <XAxis dataKey="date" stroke="var(--text-muted)" fontSize={11} />
-                <YAxis stroke="var(--text-muted)" fontSize={11} />
+                <CartesianGrid strokeDasharray="2 2" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="date" stroke="var(--text-muted)" fontSize={11} tickLine={false} />
+                <YAxis stroke="var(--text-muted)" fontSize={11} tickLine={false} />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: 'var(--bg-modal)',
+                    backgroundColor: 'var(--bg-modal, #131C2E)',
                     borderColor: 'var(--border-medium)',
                     borderRadius: '8px',
                     fontSize: '12px',
-                    color: '#FFF',
+                    boxShadow: '0 8px 20px rgba(0,0,0,0.5)',
                   }}
                 />
-                <Area type="monotone" dataKey="present" stroke="var(--success)" fillOpacity={1} fill="url(#presentGrad)" name="Present" />
-                <Area type="monotone" dataKey="absent" stroke="var(--danger)" fillOpacity={1} fill="url(#absentGrad)" name="Absent" />
+                <Area type="monotone" dataKey="present" stroke="var(--success)" strokeWidth={2} fillOpacity={1} fill="url(#presentGrad)" name="Present" />
+                <Area type="monotone" dataKey="absent" stroke="var(--danger)" strokeWidth={2} fillOpacity={1} fill="url(#absentGrad)" name="Absent" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* Workforce Distribution by Department */}
-        <div className="card">
-          <div className="card-header">
+        <div className="card" style={{ padding: '22px' }}>
+          <div className="card-header" style={{ marginBottom: '16px' }}>
             <div>
-              <h3 className="card-title">Workforce by Department</h3>
-              <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                Total registered workers allocated across business units
+              <h3 className="card-title" style={{ fontSize: '0.98rem' }}>Workforce by Department</h3>
+              <p style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                Active personnel headcount allocated across departments
               </p>
             </div>
           </div>
-          <div style={{ height: '280px', width: '100%' }}>
+          <div style={{ height: '260px', width: '100%' }}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={stats?.departmentDistribution || []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={10} interval={0} angle={-15} textAnchor="end" height={45} />
-                <YAxis stroke="var(--text-muted)" fontSize={11} />
+              <BarChart data={stats?.departmentDistribution || []} margin={{ top: 8, right: 12, left: -22, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="2 2" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={10} interval={0} angle={-15} textAnchor="end" height={45} tickLine={false} />
+                <YAxis stroke="var(--text-muted)" fontSize={11} tickLine={false} />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: 'var(--bg-modal)',
+                    backgroundColor: 'var(--bg-modal, #131C2E)',
                     borderColor: 'var(--border-medium)',
                     borderRadius: '8px',
                     fontSize: '12px',
-                    color: '#FFF',
+                    boxShadow: '0 8px 20px rgba(0,0,0,0.5)',
                   }}
                 />
-                <Bar dataKey="count" fill="var(--primary)" radius={[4, 4, 0, 0]} name="Workers" />
+                <Bar dataKey="count" fill="var(--primary)" radius={[4, 4, 0, 0]} name="Personnel" />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
       </div>
 
-      {/* Quick Action Navigation Panels */}
-      <div className="card">
-        <h3 className="card-title" style={{ marginBottom: '16px' }}>Core Operations Quick Access</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
+      {/* Operations Quick Access Strip */}
+      <div className="card" style={{ padding: '22px' }}>
+        <h3 className="card-title" style={{ fontSize: '0.98rem', marginBottom: '14px' }}>
+          Operations Quick Access
+        </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px' }}>
           <div
             onClick={() => navigate('/attendance')}
             className="card"
@@ -415,18 +526,26 @@ export const DashboardPage = () => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
+              transition: 'all var(--transition-fast)',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ padding: '8px', borderRadius: '6px', backgroundColor: 'rgba(59, 130, 246, 0.1)', color: 'var(--primary)' }}>
-                <CalendarCheck2 size={20} />
+              <div
+                style={{
+                  padding: '9px',
+                  borderRadius: 'var(--radius-md)',
+                  backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                  color: 'var(--primary)',
+                }}
+              >
+                <CalendarCheck2 size={18} />
               </div>
               <div>
-                <h4 style={{ fontSize: '0.92rem', fontWeight: 600 }}>Daily Attendance</h4>
-                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Individual & bulk marking workflow</p>
+                <h4 style={{ fontSize: '0.88rem', fontWeight: 600 }}>Daily Attendance</h4>
+                <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Mark & verify shifts</p>
               </div>
             </div>
-            <ArrowRight size={18} color="var(--text-muted)" />
+            <ArrowRight size={16} color="var(--text-muted)" />
           </div>
 
           <div
@@ -439,18 +558,26 @@ export const DashboardPage = () => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
+              transition: 'all var(--transition-fast)',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ padding: '8px', borderRadius: '6px', backgroundColor: 'rgba(16, 185, 129, 0.1)', color: 'var(--success)' }}>
-                <Users size={20} />
+              <div
+                style={{
+                  padding: '9px',
+                  borderRadius: 'var(--radius-md)',
+                  backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                  color: 'var(--success)',
+                }}
+              >
+                <Users size={18} />
               </div>
               <div>
-                <h4 style={{ fontSize: '0.92rem', fontWeight: 600 }}>Workers Directory</h4>
-                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Profiles, wage rates & assignments</p>
+                <h4 style={{ fontSize: '0.88rem', fontWeight: 600 }}>Workers Directory</h4>
+                <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Profiles, rates & status</p>
               </div>
             </div>
-            <ArrowRight size={18} color="var(--text-muted)" />
+            <ArrowRight size={16} color="var(--text-muted)" />
           </div>
 
           <div
@@ -463,18 +590,26 @@ export const DashboardPage = () => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
+              transition: 'all var(--transition-fast)',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ padding: '8px', borderRadius: '6px', backgroundColor: 'rgba(245, 158, 11, 0.1)', color: 'var(--warning)' }}>
-                <CalendarDays size={20} />
+              <div
+                style={{
+                  padding: '9px',
+                  borderRadius: 'var(--radius-md)',
+                  backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                  color: 'var(--warning)',
+                }}
+              >
+                <CalendarDays size={18} />
               </div>
               <div>
-                <h4 style={{ fontSize: '0.92rem', fontWeight: 600 }}>Leave Requests</h4>
-                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Record & review site leaves</p>
+                <h4 style={{ fontSize: '0.88rem', fontWeight: 600 }}>Leave Requests</h4>
+                <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Review site requests</p>
               </div>
             </div>
-            <ArrowRight size={18} color="var(--text-muted)" />
+            <ArrowRight size={16} color="var(--text-muted)" />
           </div>
 
           {isAdmin && (
@@ -488,18 +623,26 @@ export const DashboardPage = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
+                transition: 'all var(--transition-fast)',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ padding: '8px', borderRadius: '6px', backgroundColor: 'rgba(139, 92, 246, 0.1)', color: 'var(--purple)' }}>
-                  <Banknote size={20} />
+                <div
+                  style={{
+                    padding: '9px',
+                    borderRadius: 'var(--radius-md)',
+                    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                    color: 'var(--purple)',
+                  }}
+                >
+                  <Banknote size={18} />
                 </div>
                 <div>
-                  <h4 style={{ fontSize: '0.92rem', fontWeight: 600 }}>Payroll & Wages</h4>
-                  <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Run calculation & approvals</p>
+                  <h4 style={{ fontSize: '0.88rem', fontWeight: 600 }}>Payroll & Wages</h4>
+                  <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Calculations & payouts</p>
                 </div>
               </div>
-              <ArrowRight size={18} color="var(--text-muted)" />
+              <ArrowRight size={16} color="var(--text-muted)" />
             </div>
           )}
         </div>

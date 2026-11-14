@@ -82,7 +82,7 @@ export const FloatingAiChat = () => {
   };
 
   return (
-    <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 9999 }}>
+    <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 'var(--z-floating, 80)' }}>
       {/* Floating Trigger Button */}
       {!isOpen && (
         <button

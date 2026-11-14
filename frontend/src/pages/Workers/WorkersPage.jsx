@@ -6,6 +6,9 @@ import { useNotification } from '../../context/NotificationContext';
 import StatusBadge from '../../components/common/StatusBadge';
 import Modal from '../../components/common/Modal';
 import Pagination from '../../components/common/Pagination';
+import PageHeader from '../../components/common/PageHeader';
+import { TableSkeleton } from '../../components/common/LoadingSkeleton';
+import EmptyState from '../../components/common/EmptyState';
 import {
   Users,
   Search,
@@ -26,6 +29,8 @@ import {
   Download,
   CheckCircle2,
   AlertCircle,
+  X,
+  RefreshCw,
 } from 'lucide-react';
 
 const INDIAN_PHONE_REGEX = /^[6-9]\d{9}$/;
@@ -88,7 +93,6 @@ export const WorkersPage = () => {
   useEffect(() => {
     const loadDropdowns = async () => {
       try {
-        // Bug Fix 3: Operational dropdown only loads ACTIVE work locations
         const [d, s, ws] = await Promise.all([
           apiClient.get('/departments'),
           apiClient.get('/skills'),
@@ -138,6 +142,14 @@ export const WorkersPage = () => {
     e.preventDefault();
     setPage(1);
     fetchWorkers();
+  };
+
+  const handleResetFilters = () => {
+    setSearch('');
+    setDepartmentId('');
+    setSkillCategoryId('');
+    setStatus('');
+    setPage(1);
   };
 
   const handleParseCsv = (rawText) => {
@@ -229,7 +241,7 @@ export const WorkersPage = () => {
     }
   };
 
-  // Bug Fix 1: Phone validation handler for new worker
+  // Indian Phone validation for new worker
   const handlePhoneChange = (val) => {
     const clean = val.replace(/\s+/g, '');
     setNewWorker((prev) => ({ ...prev, phone: clean }));
@@ -277,7 +289,6 @@ export const WorkersPage = () => {
     }
   };
 
-  // Edit worker handler
   const openEditModal = (w) => {
     setEditingWorker({
       id: w.id,
@@ -295,7 +306,6 @@ export const WorkersPage = () => {
     setEditModalOpen(true);
   };
 
-  // Bug Fix 1: Phone validation handler for editing worker
   const handleEditPhoneChange = (val) => {
     const clean = val.replace(/\s+/g, '');
     setEditingWorker((prev) => ({ ...prev, phone: clean }));
@@ -337,13 +347,12 @@ export const WorkersPage = () => {
     }
   };
 
-  // Bug Fix 2: Reactivate / Deactivate workers
   const handleToggleStatus = async (worker) => {
     const isActivating = worker.status === 'INACTIVE';
     try {
       if (isActivating) {
         await apiClient.patch(`/workers/${worker.id}/reactivate`);
-        showToast(`Worker ${worker.workerCode} has been reactivated successfully!`, 'success');
+        showToast(`Worker ${worker.workerCode} reactivated successfully!`, 'success');
       } else {
         await apiClient.patch(`/workers/${worker.id}/deactivate`);
         showToast(`Worker ${worker.workerCode} has been deactivated.`, 'success');
@@ -355,55 +364,76 @@ export const WorkersPage = () => {
   };
 
   return (
-    <div>
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Workers Directory</h1>
-          <p className="page-description">
-            Complete database of organization labourers, craftspeople and warehouse personnel
-          </p>
-        </div>
-
-        <div style={{ display: 'flex', gap: '10px' }}>
-          {isAdmin && (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <PageHeader
+        title="Workers Directory"
+        description="Comprehensive personnel database of organization craftspeople, technicians and warehouse workforce"
+        actions={
+          <>
+            {isAdmin && (
+              <button
+                onClick={() => {
+                  setBulkModalOpen(true);
+                  setBulkResult(null);
+                  setParsedRows([]);
+                  setBulkText('');
+                }}
+                className="btn btn-secondary btn-sm"
+                style={{ gap: '6px', height: '36px' }}
+              >
+                <FileSpreadsheet size={15} />
+                <span>Bulk Import (CSV)</span>
+              </button>
+            )}
             <button
               onClick={() => {
-                setBulkModalOpen(true);
-                setBulkResult(null);
-                setParsedRows([]);
-                setBulkText('');
+                setPhoneError('');
+                setCreateModalOpen(true);
               }}
-              className="btn btn-secondary"
-              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+              className="btn btn-primary btn-sm"
+              style={{ gap: '6px', height: '36px' }}
             >
-              <FileSpreadsheet size={16} /> Bulk Import (CSV/Excel)
+              <Plus size={16} />
+              <span>Register New Worker</span>
             </button>
-          )}
-          <button
-            onClick={() => {
-              setPhoneError('');
-              setCreateModalOpen(true);
-            }}
-            className="btn btn-primary"
-          >
-            <Plus size={16} /> Register New Worker
-          </button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* Filter and Search Bar */}
-      <div className="card" style={{ marginBottom: '20px', padding: '16px' }}>
-        <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+      <div
+        className="card"
+        style={{
+          padding: '16px 20px',
+          backgroundColor: 'var(--bg-surface, #111827)',
+          border: '1px solid var(--border-subtle)',
+        }}
+      >
+        <form
+          onSubmit={handleSearchSubmit}
+          style={{
+            display: 'flex',
+            gap: '12px',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+          }}
+        >
           <div style={{ position: 'relative', flex: '1', minWidth: '240px' }}>
             <Search
-              size={16}
-              style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}
+              size={15}
+              style={{
+                position: 'absolute',
+                left: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: 'var(--text-muted)',
+              }}
             />
             <input
               type="text"
               className="form-control"
-              style={{ paddingLeft: '36px' }}
-              placeholder="Search by worker code, full name, or phone..."
+              style={{ paddingLeft: '36px', height: '38px', fontSize: '0.84rem' }}
+              placeholder="Search by code, full name or phone..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -411,7 +441,7 @@ export const WorkersPage = () => {
 
           <select
             className="form-control"
-            style={{ width: '180px' }}
+            style={{ width: '180px', height: '38px', fontSize: '0.84rem' }}
             value={departmentId}
             onChange={(e) => {
               setDepartmentId(e.target.value);
@@ -420,13 +450,15 @@ export const WorkersPage = () => {
           >
             <option value="">All Departments</option>
             {departments.map((d) => (
-              <option key={d.id} value={d.id}>{d.name}</option>
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
             ))}
           </select>
 
           <select
             className="form-control"
-            style={{ width: '180px' }}
+            style={{ width: '180px', height: '38px', fontSize: '0.84rem' }}
             value={skillCategoryId}
             onChange={(e) => {
               setSkillCategoryId(e.target.value);
@@ -435,13 +467,15 @@ export const WorkersPage = () => {
           >
             <option value="">All Skills</option>
             {skills.map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
             ))}
           </select>
 
           <select
             className="form-control"
-            style={{ width: '140px' }}
+            style={{ width: '140px', height: '38px', fontSize: '0.84rem' }}
             value={status}
             onChange={(e) => {
               setStatus(e.target.value);
@@ -449,132 +483,252 @@ export const WorkersPage = () => {
             }}
           >
             <option value="">All Statuses</option>
-            <option value="ACTIVE">Active</option>
-            <option value="INACTIVE">Inactive</option>
+            <option value="ACTIVE">Active Only</option>
+            <option value="INACTIVE">Inactive Only</option>
           </select>
 
-          <button type="submit" className="btn btn-secondary">
-            Search
+          <button
+            type="submit"
+            className="btn btn-secondary btn-sm"
+            style={{ height: '38px', padding: '0 16px' }}
+          >
+            Filter
           </button>
+
+          {(search || departmentId || skillCategoryId || status) && (
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="btn btn-outline btn-sm"
+              style={{ height: '38px', padding: '0 12px', gap: '4px' }}
+              title="Reset All Filters"
+            >
+              <X size={14} />
+              <span>Reset</span>
+            </button>
+          )}
         </form>
       </div>
 
-      {/* Table Container */}
-      <div className="table-container">
-        {loading ? (
-          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-            Loading workforce personnel records...
-          </div>
-        ) : workers.length === 0 ? (
-          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-            No worker records found matching filters.
-          </div>
-        ) : (
+      {/* Workers Data Table */}
+      {loading ? (
+        <TableSkeleton rows={7} cols={8} />
+      ) : workers.length === 0 ? (
+        <EmptyState
+          icon={Users}
+          title="No worker records found"
+          description="Try adjusting your search criteria or clearing active filters."
+          action={
+            <button
+              onClick={() => {
+                handleResetFilters();
+                fetchWorkers();
+              }}
+              className="btn btn-secondary btn-sm"
+              style={{ gap: '6px' }}
+            >
+              <RefreshCw size={14} />
+              <span>Reset Filters</span>
+            </button>
+          }
+        />
+      ) : (
+        <div className="table-container">
           <table className="data-table">
             <thead>
               <tr>
+                <th>Personnel</th>
                 <th>Worker Code</th>
-                <th>Full Name</th>
-                <th>Phone / Contact</th>
+                <th>Contact</th>
                 <th>Department</th>
                 <th>Skill Category</th>
-                <th>Employment Type</th>
-                <th>Current Wage Rate</th>
+                <th>Employment</th>
+                <th>Wage Rate</th>
                 <th>Status</th>
                 <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {workers.map((w) => (
-                <tr key={w.id}>
-                  <td>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--primary)' }}>
-                      {w.workerCode}
-                    </span>
-                  </td>
-                  <td>
-                    <div style={{ fontWeight: 600, color: '#FFF' }}>{w.fullName}</div>
-                    <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Joined {w.joiningDate}</div>
-                  </td>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Phone size={13} color="var(--text-muted)" />
-                      <span style={{ fontFamily: 'var(--font-mono)' }}>{w.phone}</span>
-                    </div>
-                  </td>
-                  <td>{w.department?.name || '—'}</td>
-                  <td>{w.skillCategory?.name || '—'}</td>
-                  <td>
-                    <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                      {w.employmentType?.replace(/_/g, ' ')}
-                    </span>
-                  </td>
-                  <td>
-                    {w.currentWage ? (
-                      <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                        ₹{parseFloat(w.currentWage.rate).toLocaleString()}{' '}
-                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                          / {w.currentWage.wageType.toLowerCase()}
-                        </span>
-                      </span>
-                    ) : (
-                      '—'
-                    )}
-                  </td>
-                  <td>
-                    <StatusBadge status={w.status} />
-                  </td>
-                  <td style={{ textAlign: 'right' }}>
-                    <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
-                      <button
-                        onClick={() => navigate(`/workers/${w.id}`)}
-                        className="btn btn-secondary btn-sm"
-                        title="View Details"
-                      >
-                        <Eye size={14} /> View
-                      </button>
+              {workers.map((w) => {
+                const initials = w.fullName
+                  ? w.fullName
+                      .split(' ')
+                      .map((n) => n[0])
+                      .join('')
+                      .slice(0, 2)
+                      .toUpperCase()
+                  : 'W';
 
-                      <button
-                        onClick={() => openEditModal(w)}
-                        className="btn btn-secondary btn-sm"
-                        title="Edit Details"
-                      >
-                        <Edit2 size={14} /> Edit
-                      </button>
-
-                      {/* Bug Fix 2: Reactivate / Deactivate Action */}
-                      {w.status === 'ACTIVE' ? (
-                        <button
-                          onClick={() => handleToggleStatus(w)}
-                          className="btn btn-outline btn-sm"
-                          style={{ color: 'var(--danger)', borderColor: 'var(--danger-border)' }}
-                          title="Deactivate worker"
+                return (
+                  <tr key={w.id}>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: 'var(--radius-md)',
+                            backgroundColor: 'rgba(59, 130, 246, 0.12)',
+                            color: 'var(--primary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 700,
+                            fontSize: '0.74rem',
+                            flexShrink: 0,
+                            border: '1px solid rgba(59, 130, 246, 0.25)',
+                          }}
                         >
-                          <UserX size={14} /> Deactivate
-                        </button>
+                          {initials}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.88rem' }}>
+                            {w.fullName}
+                          </div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                            Joined {w.joiningDate}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+
+                    <td>
+                      <span
+                        style={{
+                          fontFamily: 'var(--font-mono)',
+                          fontWeight: 600,
+                          fontSize: '0.82rem',
+                          color: 'var(--primary)',
+                          backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                          padding: '2px 7px',
+                          borderRadius: 'var(--radius-sm)',
+                          border: '1px solid rgba(59, 130, 246, 0.2)',
+                        }}
+                      >
+                        {w.workerCode}
+                      </span>
+                    </td>
+
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem' }}>
+                        <Phone size={12} color="var(--text-muted)" />
+                        <span style={{ fontFamily: 'var(--font-mono)' }}>{w.phone}</span>
+                      </div>
+                    </td>
+
+                    <td>
+                      <span style={{ fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
+                        {w.department?.name || '—'}
+                      </span>
+                    </td>
+
+                    <td>
+                      <span style={{ fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
+                        {w.skillCategory?.name || '—'}
+                      </span>
+                    </td>
+
+                    <td>
+                      <span
+                        style={{
+                          fontSize: '0.74rem',
+                          padding: '2px 8px',
+                          borderRadius: 'var(--radius-full)',
+                          backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                          color: 'var(--text-secondary)',
+                          border: '1px solid var(--border-subtle)',
+                          textTransform: 'capitalize',
+                        }}
+                      >
+                        {w.employmentType?.replace(/_/g, ' ').toLowerCase()}
+                      </span>
+                    </td>
+
+                    <td>
+                      {w.currentWage ? (
+                        <div style={{ fontSize: '0.84rem' }}>
+                          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                            ₹{parseFloat(w.currentWage.rate).toLocaleString('en-IN')}
+                          </span>{' '}
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                            /{w.currentWage.wageType.toLowerCase()}
+                          </span>
+                        </div>
                       ) : (
-                        isAdmin && (
+                        <span style={{ color: 'var(--text-muted)' }}>—</span>
+                      )}
+                    </td>
+
+                    <td>
+                      <StatusBadge status={w.status} />
+                    </td>
+
+                    <td style={{ textAlign: 'right' }}>
+                      <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
+                        <button
+                          onClick={() => navigate(`/workers/${w.id}`)}
+                          className="btn btn-secondary btn-sm"
+                          style={{ padding: '4px 8px', fontSize: '0.78rem', gap: '4px' }}
+                          title="View Profile"
+                        >
+                          <Eye size={13} />
+                          <span>View</span>
+                        </button>
+
+                        <button
+                          onClick={() => openEditModal(w)}
+                          className="btn btn-secondary btn-sm"
+                          style={{ padding: '4px 8px', fontSize: '0.78rem', gap: '4px' }}
+                          title="Edit Worker Details"
+                        >
+                          <Edit2 size={13} />
+                          <span>Edit</span>
+                        </button>
+
+                        {w.status === 'ACTIVE' ? (
                           <button
                             onClick={() => handleToggleStatus(w)}
-                            className="btn btn-primary btn-sm"
-                            title="Reactivate worker"
+                            className="btn btn-outline btn-sm"
+                            style={{
+                              padding: '4px 8px',
+                              fontSize: '0.78rem',
+                              color: 'var(--danger)',
+                              borderColor: 'rgba(239, 68, 68, 0.3)',
+                              gap: '4px',
+                            }}
+                            title="Deactivate worker"
                           >
-                            <UserCheck size={14} /> Reactivate
+                            <UserX size={13} />
+                            <span>Deactivate</span>
                           </button>
-                        )
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                        ) : (
+                          isAdmin && (
+                            <button
+                              onClick={() => handleToggleStatus(w)}
+                              className="btn btn-primary btn-sm"
+                              style={{ padding: '4px 8px', fontSize: '0.78rem', gap: '4px' }}
+                              title="Reactivate worker"
+                            >
+                              <UserCheck size={13} />
+                              <span>Reactivate</span>
+                            </button>
+                          )
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
-        )}
-      </div>
+        </div>
+      )}
 
       <Pagination
         currentPage={page}
         totalPages={totalPages}
+        totalItems={total}
+        pageSize={15}
         onPageChange={(p) => setPage(p)}
       />
 
@@ -583,10 +737,12 @@ export const WorkersPage = () => {
         isOpen={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
         title="Register New Worker"
-        maxWidth="620px"
+        subtitle="Create an official profile with employment classification and initial wage rate"
+        maxWidth="640px"
         footer={
           <>
             <button
+              type="button"
               onClick={() => setCreateModalOpen(false)}
               className="btn btn-secondary"
               disabled={submitting}
@@ -594,9 +750,16 @@ export const WorkersPage = () => {
               Cancel
             </button>
             <button
+              type="button"
               onClick={handleCreateWorker}
               className="btn btn-primary"
-              disabled={submitting || !newWorker.fullName || !newWorker.phone || !newWorker.address || !!phoneError}
+              disabled={
+                submitting ||
+                !newWorker.fullName ||
+                !newWorker.phone ||
+                !newWorker.address ||
+                !!phoneError
+              }
             >
               {submitting ? 'Registering...' : 'Complete Registration'}
             </button>
@@ -633,7 +796,7 @@ export const WorkersPage = () => {
                 required
               />
               {phoneError && (
-                <div style={{ color: 'var(--danger)', fontSize: '0.78rem', marginTop: '4px' }}>
+                <div style={{ color: 'var(--danger)', fontSize: '0.74rem', marginTop: '4px' }}>
                   {phoneError}
                 </div>
               )}
@@ -669,7 +832,7 @@ export const WorkersPage = () => {
             <textarea
               className="form-control"
               rows={2}
-              placeholder="Full residential address, village, or labour camp block"
+              placeholder="Full address, village or worker camp accommodation"
               value={newWorker.address}
               onChange={(e) => setNewWorker({ ...newWorker, address: e.target.value })}
               required
@@ -686,7 +849,9 @@ export const WorkersPage = () => {
               >
                 <option value="">Select Department</option>
                 {departments.map((d) => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
                 ))}
               </select>
             </div>
@@ -700,7 +865,9 @@ export const WorkersPage = () => {
               >
                 <option value="">Select Skill</option>
                 {skills.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
                 ))}
               </select>
             </div>
@@ -722,7 +889,7 @@ export const WorkersPage = () => {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Initial Assigned Work Site (Active Only)</label>
+              <label className="form-label">Assigned Work Site (Active Only)</label>
               <select
                 className="form-control"
                 value={newWorker.workSiteId}
@@ -730,16 +897,24 @@ export const WorkersPage = () => {
               >
                 <option value="">Select Site (Optional)</option>
                 {sites.map((ws) => (
-                  <option key={ws.id} value={ws.id}>{ws.name}</option>
+                  <option key={ws.id} value={ws.id}>
+                    {ws.name}
+                  </option>
                 ))}
               </select>
             </div>
           </div>
 
           {isAdmin && (
-            <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '14px', marginTop: '10px' }}>
-              <h4 style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', marginBottom: '10px' }}>
-                Initial Wage Rate Configuration
+            <div
+              style={{
+                borderTop: '1px solid var(--border-subtle)',
+                paddingTop: '14px',
+                marginTop: '10px',
+              }}
+            >
+              <h4 style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '10px' }}>
+                Wage Configuration
               </h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                 <div className="form-group">
@@ -777,11 +952,12 @@ export const WorkersPage = () => {
         <Modal
           isOpen={editModalOpen}
           onClose={() => setEditModalOpen(false)}
-          title={`Edit Worker — ${editingWorker.workerCode}`}
-          maxWidth="600px"
+          title={`Edit Worker Profile — ${editingWorker.workerCode}`}
+          maxWidth="620px"
           footer={
             <>
               <button
+                type="button"
                 onClick={() => setEditModalOpen(false)}
                 className="btn btn-secondary"
                 disabled={savingEdit}
@@ -789,11 +965,12 @@ export const WorkersPage = () => {
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleSaveEdit}
                 className="btn btn-primary"
                 disabled={savingEdit || !editingWorker.fullName || !!editPhoneError}
               >
-                {savingEdit ? 'Saving Changes...' : 'Save Worker Details'}
+                {savingEdit ? 'Saving Changes...' : 'Save Worker Profile'}
               </button>
             </>
           }
@@ -806,7 +983,9 @@ export const WorkersPage = () => {
                   type="text"
                   className="form-control"
                   value={editingWorker.fullName}
-                  onChange={(e) => setEditingWorker({ ...editingWorker, fullName: e.target.value })}
+                  onChange={(e) =>
+                    setEditingWorker({ ...editingWorker, fullName: e.target.value })
+                  }
                   required
                 />
               </div>
@@ -826,7 +1005,7 @@ export const WorkersPage = () => {
                   required
                 />
                 {editPhoneError && (
-                  <div style={{ color: 'var(--danger)', fontSize: '0.78rem', marginTop: '4px' }}>
+                  <div style={{ color: 'var(--danger)', fontSize: '0.74rem', marginTop: '4px' }}>
                     {editPhoneError}
                   </div>
                 )}
@@ -851,7 +1030,9 @@ export const WorkersPage = () => {
                   className="form-control"
                   placeholder="Contact Name & Number"
                   value={editingWorker.emergencyContact}
-                  onChange={(e) => setEditingWorker({ ...editingWorker, emergencyContact: e.target.value })}
+                  onChange={(e) =>
+                    setEditingWorker({ ...editingWorker, emergencyContact: e.target.value })
+                  }
                 />
               </div>
             </div>
@@ -873,11 +1054,15 @@ export const WorkersPage = () => {
                 <select
                   className="form-control"
                   value={editingWorker.departmentId}
-                  onChange={(e) => setEditingWorker({ ...editingWorker, departmentId: e.target.value })}
+                  onChange={(e) =>
+                    setEditingWorker({ ...editingWorker, departmentId: e.target.value })
+                  }
                 >
                   <option value="">Select Department</option>
                   {departments.map((d) => (
-                    <option key={d.id} value={d.id}>{d.name}</option>
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -887,11 +1072,15 @@ export const WorkersPage = () => {
                 <select
                   className="form-control"
                   value={editingWorker.skillCategoryId}
-                  onChange={(e) => setEditingWorker({ ...editingWorker, skillCategoryId: e.target.value })}
+                  onChange={(e) =>
+                    setEditingWorker({ ...editingWorker, skillCategoryId: e.target.value })
+                  }
                 >
                   <option value="">Select Skill</option>
                   {skills.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -902,7 +1091,9 @@ export const WorkersPage = () => {
               <select
                 className="form-control"
                 value={editingWorker.employmentType}
-                onChange={(e) => setEditingWorker({ ...editingWorker, employmentType: e.target.value })}
+                onChange={(e) =>
+                  setEditingWorker({ ...editingWorker, employmentType: e.target.value })
+                }
               >
                 <option value="DAILY_WAGE">Daily Wage</option>
                 <option value="CONTRACT">Contract</option>
@@ -918,25 +1109,55 @@ export const WorkersPage = () => {
       <Modal
         isOpen={bulkModalOpen}
         onClose={() => setBulkModalOpen(false)}
-        title="Bulk Worker Import (CSV / Excel)"
-        maxWidth="750px"
+        title="Bulk Worker Import (CSV / Spreadsheets)"
+        subtitle="Validate and register multiple workers in a single batch with auto-error detection"
+        maxWidth="780px"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setBulkModalOpen(false)}
+              className="btn btn-secondary"
+            >
+              Close
+            </button>
+            <button
+              type="button"
+              onClick={handleExecuteBulkImport}
+              className="btn btn-primary"
+              disabled={bulkImporting || parsedRows.filter((r) => r.isValid).length === 0}
+            >
+              {bulkImporting
+                ? 'Importing Workers...'
+                : `Import ${parsedRows.filter((r) => r.isValid).length} Valid Worker(s)`}
+            </button>
+          </>
+        }
       >
-        <div style={{ marginBottom: '16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              Paste comma-separated rows or upload CSV data below.
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '10px',
+            }}
+          >
+            <span style={{ fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
+              Paste comma-separated rows below: Full Name, Phone, Address, Gender, Daily Wage
             </span>
             <button
               onClick={handleDownloadTemplate}
               className="btn btn-secondary btn-sm"
               style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
             >
-              <Download size={14} /> Download CSV Template
+              <Download size={14} /> Download Template
             </button>
           </div>
 
-          <div className="form-group" style={{ marginBottom: '12px' }}>
-            <label className="form-label">Assign To Site (Optional)</label>
+          <div className="form-group">
+            <label className="form-label">Assign To Work Location (Optional)</label>
             <select
               className="form-control"
               value={bulkSiteId}
@@ -944,17 +1165,19 @@ export const WorkersPage = () => {
             >
               <option value="">Unassigned (Assign later)</option>
               {sites.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
               ))}
             </select>
           </div>
 
-          <div className="form-group" style={{ marginBottom: '12px' }}>
-            <label className="form-label">CSV Data (Format: Full Name, Phone, Address, Gender, Daily Wage)</label>
+          <div className="form-group">
+            <label className="form-label">CSV Data Input</label>
             <textarea
               className="form-control"
               rows={5}
-              placeholder="Ramesh Kumar, 9876543210, Camp A, MALE, 750&#10;Suresh Patil, 8765432109, Camp B, MALE, 800"
+              placeholder="Ramesh Kumar, 9876543210, Camp A Block 1, MALE, 750&#10;Suresh Patil, 8765432109, Camp B Block 2, MALE, 800"
               value={bulkText}
               onChange={(e) => handleParseCsv(e.target.value)}
               style={{ fontFamily: 'var(--font-mono)', fontSize: '0.82rem' }}
@@ -963,40 +1186,65 @@ export const WorkersPage = () => {
 
           {/* Validation & Preview Strip */}
           {parsedRows.length > 0 && (
-            <div style={{ marginTop: '16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <span style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
-                  Preview: {parsedRows.length} Row(s) Parsed ({parsedRows.filter((r) => r.isValid).length} Valid, {parsedRows.filter((r) => !r.isValid).length} Invalid)
+            <div>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '8px',
+                }}
+              >
+                <span style={{ fontWeight: 600, fontSize: '0.84rem', color: 'var(--text-primary)' }}>
+                  Validation Preview: {parsedRows.length} Rows ({parsedRows.filter((r) => r.isValid).length} Valid,{' '}
+                  {parsedRows.filter((r) => !r.isValid).length} Invalid)
                 </span>
               </div>
 
-              <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)' }}>
-                <table className="data-table" style={{ fontSize: '0.8rem' }}>
+              <div
+                style={{
+                  maxHeight: '200px',
+                  overflowY: 'auto',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 'var(--radius-md)',
+                }}
+              >
+                <table className="data-table" style={{ fontSize: '0.78rem' }}>
                   <thead>
                     <tr>
                       <th>Status</th>
                       <th>Row</th>
                       <th>Full Name</th>
                       <th>Phone</th>
-                      <th>Wage Rate</th>
+                      <th>Daily Wage</th>
                       <th>Validation Note</th>
                     </tr>
                   </thead>
                   <tbody>
                     {parsedRows.map((r, idx) => (
-                      <tr key={idx} style={{ backgroundColor: r.isValid ? 'transparent' : 'rgba(239, 68, 68, 0.08)' }}>
+                      <tr
+                        key={idx}
+                        style={{
+                          backgroundColor: r.isValid ? 'transparent' : 'rgba(239, 68, 68, 0.08)',
+                        }}
+                      >
                         <td>
                           {r.isValid ? (
-                            <CheckCircle2 size={15} color="var(--success)" />
+                            <CheckCircle2 size={14} color="var(--success)" />
                           ) : (
-                            <AlertCircle size={15} color="var(--danger)" />
+                            <AlertCircle size={14} color="var(--danger)" />
                           )}
                         </td>
                         <td>#{r.rowNum}</td>
                         <td style={{ fontWeight: 600 }}>{r.fullName}</td>
                         <td>{r.phone}</td>
                         <td>₹{r.wageRate}</td>
-                        <td style={{ color: r.isValid ? 'var(--success)' : 'var(--danger)', fontSize: '0.75rem' }}>
+                        <td
+                          style={{
+                            color: r.isValid ? 'var(--success)' : 'var(--danger)',
+                            fontSize: '0.74rem',
+                          }}
+                        >
                           {r.isValid ? 'Valid Indian 10-digit format' : r.error}
                         </td>
                       </tr>
@@ -1011,46 +1259,26 @@ export const WorkersPage = () => {
           {bulkResult && (
             <div
               style={{
-                marginTop: '16px',
                 padding: '12px 16px',
                 borderRadius: 'var(--radius-md)',
                 backgroundColor: 'rgba(16, 185, 129, 0.1)',
                 border: '1px solid var(--success-border)',
                 color: 'var(--success)',
-                fontSize: '0.85rem',
+                fontSize: '0.84rem',
               }}
             >
               <div>
-                <strong>Import Complete:</strong> {bulkResult.imported} worker(s) created successfully!
+                <strong>Batch Imported:</strong> {bulkResult.imported} worker(s) successfully registered!
                 {bulkResult.failed > 0 && ` (${bulkResult.failed} failed)`}
               </div>
               {bulkResult.createdWorkerCodes?.length > 0 && (
-                <div style={{ fontSize: '0.78rem', marginTop: '4px', color: 'var(--text-secondary)' }}>
-                  Assigned codes: {bulkResult.createdWorkerCodes.slice(0, 5).join(', ')}{bulkResult.createdWorkerCodes.length > 5 ? '...' : ''}
+                <div style={{ fontSize: '0.74rem', marginTop: '4px', color: 'var(--text-secondary)' }}>
+                  Generated Codes: {bulkResult.createdWorkerCodes.slice(0, 6).join(', ')}
+                  {bulkResult.createdWorkerCodes.length > 6 ? '...' : ''}
                 </div>
               )}
             </div>
           )}
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '16px' }}>
-          <button
-            type="button"
-            onClick={() => setBulkModalOpen(false)}
-            className="btn btn-secondary"
-          >
-            Close
-          </button>
-          <button
-            type="button"
-            onClick={handleExecuteBulkImport}
-            className="btn btn-primary"
-            disabled={bulkImporting || parsedRows.filter((r) => r.isValid).length === 0}
-          >
-            {bulkImporting
-              ? 'Importing Workers...'
-              : `Import ${parsedRows.filter((r) => r.isValid).length} Valid Worker(s)`}
-          </button>
         </div>
       </Modal>
     </div>

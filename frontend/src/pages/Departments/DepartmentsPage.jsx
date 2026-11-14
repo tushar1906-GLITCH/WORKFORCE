@@ -4,7 +4,10 @@ import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
 import StatusBadge from '../../components/common/StatusBadge';
 import Modal from '../../components/common/Modal';
-import { Building2, Plus, Edit, Check, Wrench } from 'lucide-react';
+import PageHeader from '../../components/common/PageHeader';
+import { TableSkeleton } from '../../components/common/LoadingSkeleton';
+import EmptyState from '../../components/common/EmptyState';
+import { Building2, Plus, Edit, Check, Wrench, Layers } from 'lucide-react';
 
 export const DepartmentsPage = () => {
   const { isAdmin } = useAuth();
@@ -13,6 +16,7 @@ export const DepartmentsPage = () => {
   const [departments, setDepartments] = useState([]);
   const [skills, setSkills] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('departments');
 
   // Modals
   const [deptModalOpen, setDeptModalOpen] = useState(false);
@@ -75,206 +79,314 @@ export const DepartmentsPage = () => {
   };
 
   return (
-    <div>
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Departments & Skill Categories</h1>
-          <p className="page-description">
-            Define organizational divisions, functional units and worker skill qualifications
-          </p>
-        </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <PageHeader
+        title="Departments & Skill Classifications"
+        description="Define organizational business units, operational branches, and workforce qualification categories"
+        actions={
+          isAdmin && (
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                onClick={() => setDeptModalOpen(true)}
+                className="btn btn-primary btn-sm"
+                style={{ gap: '6px', height: '36px' }}
+              >
+                <Plus size={16} />
+                <span>New Department</span>
+              </button>
+              <button
+                onClick={() => setSkillModalOpen(true)}
+                className="btn btn-secondary btn-sm"
+                style={{ gap: '6px', height: '36px' }}
+              >
+                <Plus size={16} />
+                <span>New Skill Category</span>
+              </button>
+            </div>
+          )
+        }
+      />
 
-        {isAdmin && (
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button
-              onClick={() => setDeptModalOpen(true)}
-              className="btn btn-primary"
-            >
-              <Plus size={16} /> New Department
-            </button>
-            <button
-              onClick={() => setSkillModalOpen(true)}
-              className="btn btn-secondary"
-            >
-              <Plus size={16} /> New Skill Category
-            </button>
-          </div>
-        )}
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: '4px', borderBottom: '1px solid var(--border-subtle)' }}>
+        <button
+          onClick={() => setActiveTab('departments')}
+          className="btn"
+          style={{
+            borderBottom: activeTab === 'departments' ? '2px solid var(--primary)' : '2px solid transparent',
+            borderRadius: '0',
+            color: activeTab === 'departments' ? 'var(--text-primary)' : 'var(--text-muted)',
+            fontWeight: activeTab === 'departments' ? 600 : 500,
+            padding: '10px 18px',
+            fontSize: '0.86rem',
+            backgroundColor: 'transparent',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
+        >
+          <Building2 size={16} />
+          <span>Departments ({departments.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('skills')}
+          className="btn"
+          style={{
+            borderBottom: activeTab === 'skills' ? '2px solid var(--primary)' : '2px solid transparent',
+            borderRadius: '0',
+            color: activeTab === 'skills' ? 'var(--text-primary)' : 'var(--text-muted)',
+            fontWeight: activeTab === 'skills' ? 600 : 500,
+            padding: '10px 18px',
+            fontSize: '0.86rem',
+            backgroundColor: 'transparent',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
+        >
+          <Wrench size={16} />
+          <span>Skill Qualifications ({skills.length})</span>
+        </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
-        {/* Departments Panel */}
-        <div className="card">
-          <div className="card-header">
-            <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Building2 size={20} color="var(--primary)" />
-              Departments ({departments.length})
-            </h3>
-          </div>
-
+      {loading ? (
+        <TableSkeleton rows={5} cols={4} />
+      ) : activeTab === 'departments' ? (
+        departments.length === 0 ? (
+          <EmptyState
+            icon={Building2}
+            title="No departments found"
+            description="Create organizational departments to allocate personnel."
+          />
+        ) : (
           <div className="table-container">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Code</th>
+                  <th>Department Code</th>
                   <th>Department Name</th>
                   <th>Description</th>
-                  <th>Status</th>
+                  <th>Allocated Personnel</th>
                 </tr>
               </thead>
               <tbody>
                 {departments.map((d) => (
                   <tr key={d.id}>
                     <td>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{d.code || '—'}</span>
+                      <span
+                        style={{
+                          fontFamily: 'var(--font-mono)',
+                          fontWeight: 600,
+                          fontSize: '0.82rem',
+                          color: 'var(--primary)',
+                          backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                          padding: '2px 8px',
+                          borderRadius: 'var(--radius-sm)',
+                          border: '1px solid rgba(59, 130, 246, 0.2)',
+                        }}
+                      >
+                        {d.code || 'DEPT'}
+                      </span>
                     </td>
-                    <td style={{ fontWeight: 600, color: '#FFF' }}>{d.name}</td>
-                    <td style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{d.description || '—'}</td>
                     <td>
-                      <StatusBadge status={d.isActive ? 'ACTIVE' : 'INACTIVE'} />
+                      <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.88rem' }}>
+                        {d.name}
+                      </div>
+                    </td>
+                    <td>
+                      <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                        {d.description || 'Core organizational operational division'}
+                      </span>
+                    </td>
+                    <td>
+                      <span
+                        style={{
+                          fontSize: '0.74rem',
+                          fontWeight: 600,
+                          padding: '2px 8px',
+                          borderRadius: 'var(--radius-full)',
+                          backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                          color: 'var(--text-primary)',
+                        }}
+                      >
+                        {d.workersCount ?? 'Active'}
+                      </span>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </div>
-
-        {/* Skill Categories Panel */}
-        <div className="card">
-          <div className="card-header">
-            <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Wrench size={20} color="var(--success)" />
-              Skill Categories ({skills.length})
-            </h3>
-          </div>
-
-          <div className="table-container">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Skill Category</th>
-                  <th>Description / Trade Scope</th>
-                  <th>Status</th>
+        )
+      ) : skills.length === 0 ? (
+        <EmptyState
+          icon={Wrench}
+          title="No skill categories found"
+          description="Define craft and skill classifications for workers."
+        />
+      ) : (
+        <div className="table-container">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Skill / Qualification Title</th>
+                <th>Classification Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              {skills.map((s) => (
+                <tr key={s.id}>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div
+                        style={{
+                          width: '28px',
+                          height: '28px',
+                          borderRadius: 'var(--radius-md)',
+                          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                          color: 'var(--primary)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <Wrench size={14} />
+                      </div>
+                      <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.88rem' }}>
+                        {s.name}
+                      </span>
+                    </div>
+                  </td>
+                  <td>
+                    <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                      {s.description || 'Specialized craft classification'}
+                    </span>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {skills.map((s) => (
-                  <tr key={s.id}>
-                    <td style={{ fontWeight: 600, color: '#FFF' }}>{s.name}</td>
-                    <td style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{s.description || '—'}</td>
-                    <td>
-                      <StatusBadge status={s.isActive ? 'ACTIVE' : 'INACTIVE'} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </div>
-      </div>
+      )}
 
-      {/* New Department Modal */}
+      {/* Create Department Modal */}
       <Modal
         isOpen={deptModalOpen}
         onClose={() => setDeptModalOpen(false)}
-        title="Add Department"
-        maxWidth="480px"
+        title="Add Organizational Department"
+        maxWidth="500px"
         footer={
           <>
-            <button onClick={() => setDeptModalOpen(false)} className="btn btn-secondary">
+            <button
+              type="button"
+              onClick={() => setDeptModalOpen(false)}
+              className="btn btn-secondary"
+            >
               Cancel
             </button>
             <button
+              type="button"
               onClick={handleCreateDept}
               className="btn btn-primary"
-              disabled={submitting || !deptForm.name}
+              disabled={submitting || !deptForm.name || !deptForm.code}
             >
-              {submitting ? 'Creating...' : 'Save Department'}
+              {submitting ? 'Creating...' : 'Create Department'}
             </button>
           </>
         }
       >
         <form onSubmit={handleCreateDept}>
-          <div className="form-group">
-            <label className="form-label">Department Name *</label>
-            <input
-              type="text"
-              className="form-control"
-              placeholder="e.g. Electrical & Instrumentation"
-              value={deptForm.name}
-              onChange={(e) => setDeptForm({ ...deptForm, name: e.target.value })}
-              required
-            />
-          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div className="form-group">
+              <label className="form-label">Department Name *</label>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="e.g. Electrical Engineering"
+                value={deptForm.name}
+                onChange={(e) => setDeptForm({ ...deptForm, name: e.target.value })}
+                required
+              />
+            </div>
 
-          <div className="form-group">
-            <label className="form-label">Code / Abbreviation</label>
-            <input
-              type="text"
-              className="form-control"
-              placeholder="e.g. ELE"
-              value={deptForm.code}
-              onChange={(e) => setDeptForm({ ...deptForm, code: e.target.value })}
-            />
-          </div>
+            <div className="form-group">
+              <label className="form-label">Department Code (Short Identifier) *</label>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="e.g. ELEC"
+                value={deptForm.code}
+                onChange={(e) => setDeptForm({ ...deptForm, code: e.target.value.toUpperCase() })}
+                required
+              />
+            </div>
 
-          <div className="form-group">
-            <label className="form-label">Description</label>
-            <textarea
-              className="form-control"
-              rows={2}
-              placeholder="Scope of work and responsibilities..."
-              value={deptForm.description}
-              onChange={(e) => setDeptForm({ ...deptForm, description: e.target.value })}
-            />
+            <div className="form-group">
+              <label className="form-label">Description</label>
+              <textarea
+                className="form-control"
+                rows={2}
+                placeholder="Operational scope of this department..."
+                value={deptForm.description}
+                onChange={(e) => setDeptForm({ ...deptForm, description: e.target.value })}
+              />
+            </div>
           </div>
         </form>
       </Modal>
 
-      {/* New Skill Modal */}
+      {/* Create Skill Category Modal */}
       <Modal
         isOpen={skillModalOpen}
         onClose={() => setSkillModalOpen(false)}
-        title="Add Skill Category"
-        maxWidth="480px"
+        title="Add Skill Qualification Category"
+        maxWidth="500px"
         footer={
           <>
-            <button onClick={() => setSkillModalOpen(false)} className="btn btn-secondary">
+            <button
+              type="button"
+              onClick={() => setSkillModalOpen(false)}
+              className="btn btn-secondary"
+            >
               Cancel
             </button>
             <button
+              type="button"
               onClick={handleCreateSkill}
               className="btn btn-primary"
               disabled={submitting || !skillForm.name}
             >
-              {submitting ? 'Creating...' : 'Save Skill'}
+              {submitting ? 'Creating...' : 'Create Skill Category'}
             </button>
           </>
         }
       >
         <form onSubmit={handleCreateSkill}>
-          <div className="form-group">
-            <label className="form-label">Skill Category Name *</label>
-            <input
-              type="text"
-              className="form-control"
-              placeholder="e.g. Scaffold Inspector / Erector"
-              value={skillForm.name}
-              onChange={(e) => setSkillForm({ ...skillForm, name: e.target.value })}
-              required
-            />
-          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div className="form-group">
+              <label className="form-label">Skill Qualification Name *</label>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="e.g. Heavy Equipment Operator"
+                value={skillForm.name}
+                onChange={(e) => setSkillForm({ ...skillForm, name: e.target.value })}
+                required
+              />
+            </div>
 
-          <div className="form-group">
-            <label className="form-label">Trade Qualifications / Scope</label>
-            <textarea
-              className="form-control"
-              rows={2}
-              placeholder="Required competencies..."
-              value={skillForm.description}
-              onChange={(e) => setSkillForm({ ...skillForm, description: e.target.value })}
-            />
+            <div className="form-group">
+              <label className="form-label">Description / Required Competencies</label>
+              <textarea
+                className="form-control"
+                rows={3}
+                placeholder="Competency description, certifications or craft requirements..."
+                value={skillForm.description}
+                onChange={(e) => setSkillForm({ ...skillForm, description: e.target.value })}
+              />
+            </div>
           </div>
         </form>
       </Modal>

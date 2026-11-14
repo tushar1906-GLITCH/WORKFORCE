@@ -3,6 +3,9 @@ import apiClient from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
 import StatusBadge from '../../components/common/StatusBadge';
+import PageHeader from '../../components/common/PageHeader';
+import { TableSkeleton } from '../../components/common/LoadingSkeleton';
+import EmptyState from '../../components/common/EmptyState';
 import {
   FileBarChart2,
   Download,
@@ -15,6 +18,12 @@ import {
   CheckCircle2,
   TrendingUp,
   BarChart2,
+  Users,
+  Clock,
+  Layers,
+  Building,
+  RefreshCw,
+  AlertCircle
 } from 'lucide-react';
 import MarkdownContent from '../../components/ai/MarkdownContent';
 import aiApi from '../../api/ai';
@@ -53,10 +62,10 @@ export const ReportsPage = () => {
             workSiteId: selectedSiteId || undefined,
           },
         });
-        setData(res);
+        setData(res || []);
       } else if (reportType === 'workers') {
         const res = await apiClient.get('/workers', { params: { limit: 100 } });
-        setData(res.items || []);
+        setData(res?.items || []);
       } else if (reportType === 'site-comparison') {
         const [sitesRes, assignmentsRes, attendanceRes] = await Promise.all([
           apiClient.get('/sites', { params: { status: 'ACTIVE' } }),
@@ -64,7 +73,7 @@ export const ReportsPage = () => {
           apiClient.get('/attendance', { params: { date: new Date().toISOString().split('T')[0] } }),
         ]);
 
-        const comp = sitesRes.map((site) => {
+        const comp = (sitesRes || []).map((site) => {
           const siteAssignments = (assignmentsRes || []).filter((a) => a.workSiteId === site.id);
           const siteAtt = (attendanceRes || []).filter((att) => att.workSiteId === site.id);
           const present = siteAtt.filter((a) => a.status === 'PRESENT').length;
@@ -128,7 +137,6 @@ export const ReportsPage = () => {
       exportUrl = `${baseUrl}/reports/workers/export-csv`;
     }
 
-    // Direct browser download with auth token header using fetch & blob
     fetch(exportUrl, {
       headers: { Authorization: `Bearer ${token}` },
     })
@@ -146,106 +154,214 @@ export const ReportsPage = () => {
       .catch((err) => showToast('Failed to export CSV: ' + err.message, 'error'));
   };
 
+  const reportTabs = [
+    { id: 'attendance', label: 'Attendance Ledger', icon: Calendar, description: 'Shift-level check-ins, overtime, and work site logs' },
+    { id: 'workers', label: 'Worker Roster', icon: Users, description: 'Personnel directory, compliance, and employment records' },
+    { id: 'site-comparison', label: 'Site Performance', icon: Building, description: 'Cross-site deployment compliance and coverage matrix' },
+    { id: 'daily-operations', label: 'Daily Operations & AI', icon: Sparkles, description: 'Synthesized intelligence briefing and shift telemetry' },
+  ];
+
   return (
     <div>
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Reports & Data Exports</h1>
-          <p className="page-description">
-            Live database reports, historical audit records and site-scoped CSV ledger exports
-          </p>
-        </div>
+      <PageHeader
+        title="Reports & Analytics"
+        description="Live operational telemetry, audit-grade ledgers, cross-facility performance benchmarks, and CSV data exports"
+        actions={
+          <>
+            <button
+              onClick={() => window.print()}
+              className="btn btn-secondary"
+              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              <Printer size={15} />
+              <span>Print / PDF</span>
+            </button>
+            <button
+              onClick={handleExportCsv}
+              className="btn btn-primary"
+              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              <Download size={15} />
+              <span>Export CSV</span>
+            </button>
+          </>
+        }
+      />
 
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button onClick={() => window.print()} className="btn btn-secondary">
-            <Printer size={16} /> Print / Save PDF
-          </button>
-          <button onClick={handleExportCsv} className="btn btn-primary">
-            <Download size={16} /> Export Scoped CSV
-          </button>
-        </div>
+      {/* Navigation Pill Tabs */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gap: '12px',
+          marginBottom: '20px',
+        }}
+      >
+        {reportTabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = reportType === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setReportType(tab.id)}
+              className="card"
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '12px',
+                padding: '14px 16px',
+                textAlign: 'left',
+                cursor: 'pointer',
+                borderColor: isActive ? 'var(--primary)' : 'var(--border-subtle)',
+                background: isActive ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(30, 41, 59, 0.5) 100%)' : 'var(--bg-card)',
+                boxShadow: isActive ? '0 0 0 1px var(--primary), 0 4px 12px rgba(59, 130, 246, 0.15)' : 'none',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <div
+                style={{
+                  width: '34px',
+                  height: '34px',
+                  borderRadius: 'var(--radius-md)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: isActive ? 'var(--primary)' : 'rgba(255, 255, 255, 0.05)',
+                  color: isActive ? '#FFF' : 'var(--text-secondary)',
+                  flexShrink: 0,
+                }}
+              >
+                <Icon size={18} />
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: '0.88rem', fontWeight: 600, color: isActive ? '#FFF' : 'var(--text-primary)' }}>
+                  {tab.label}
+                </div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px', lineHeight: 1.3 }}>
+                  {tab.description}
+                </div>
+              </div>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Filter Ribbon */}
-      <div className="card" style={{ marginBottom: '20px', padding: '16px' }}>
-        <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', alignItems: 'center' }}>
-          <div style={{ width: '260px' }}>
-            <label className="form-label">Report Category</label>
-            <select
-              className="form-control"
-              value={reportType}
-              onChange={(e) => setReportType(e.target.value)}
-            >
-              <option value="attendance">Daily Attendance Ledger</option>
-              <option value="workers">Worker Directory & Roster</option>
-              <option value="site-comparison">Work Location Performance & Comparison</option>
-              <option value="daily-operations">Daily Operations Snapshot & AI Briefing</option>
-            </select>
-          </div>
-
-          {reportType === 'attendance' && (
-            <>
-              <div style={{ width: '160px' }}>
-                <label className="form-label">From Date</label>
-                <input
-                  type="date"
-                  className="form-control"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
-              </div>
-
-              <div style={{ width: '160px' }}>
-                <label className="form-label">To Date</label>
-                <input
-                  type="date"
-                  className="form-control"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                />
-              </div>
-            </>
-          )}
-
-          <div style={{ width: '220px' }}>
-            <label className="form-label">Work Location</label>
-            <select
-              className="form-control"
-              value={selectedSiteId}
-              onChange={(e) => setSelectedSiteId(e.target.value)}
-            >
-              <option value="">All Permitted Work Sites</option>
-              {sites.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-          </div>
+      {/* Scoped Filter Bar */}
+      <div
+        className="card"
+        style={{
+          padding: '16px 20px',
+          marginBottom: '20px',
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          gap: '14px',
+          background: 'var(--bg-card)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: 600 }}>
+          <Filter size={15} />
+          <span>SCOPE FILTERS:</span>
         </div>
-      </div>
 
-      {/* Results Table */}
-      <div className="table-container">
-        {loading ? (
-          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-            Generating report from PostgreSQL records...
-          </div>
-        ) : reportType === 'attendance' ? (
-          data.length === 0 ? (
-            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-              No attendance records found for the selected dates and parameters.
+        {reportType === 'attendance' && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>From:</span>
+              <input
+                type="date"
+                className="form-control"
+                style={{ width: '150px', padding: '6px 10px', fontSize: '0.82rem' }}
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
             </div>
-          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>To:</span>
+              <input
+                type="date"
+                className="form-control"
+                style={{ width: '150px', padding: '6px 10px', fontSize: '0.82rem' }}
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+            </div>
+          </>
+        )}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '220px' }}>
+          <MapPin size={15} style={{ color: 'var(--text-muted)' }} />
+          <select
+            className="form-control"
+            style={{ padding: '6px 10px', fontSize: '0.82rem' }}
+            value={selectedSiteId}
+            onChange={(e) => setSelectedSiteId(e.target.value)}
+          >
+            <option value="">All Operating Facilities</option>
+            {sites.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+        </div>
+
+        <button
+          onClick={fetchReport}
+          className="btn btn-secondary btn-sm"
+          style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}
+        >
+          <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+          <span>Refresh Query</span>
+        </button>
+      </div>
+
+      {/* Results View */}
+      {loading ? (
+        <TableSkeleton rows={8} cols={reportType === 'attendance' ? 8 : reportType === 'workers' ? 7 : 6} />
+      ) : reportType === 'attendance' ? (
+        data.length === 0 ? (
+          <EmptyState
+            icon={Calendar}
+            title="No Attendance Logs Found"
+            description="No shift attendance records match the selected date window and facility parameters."
+          />
+        ) : (
+          <div className="table-container">
+            <div
+              style={{
+                padding: '12px 18px',
+                borderBottom: '1px solid var(--border-subtle)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: 'rgba(255, 255, 255, 0.015)',
+              }}
+            >
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                Showing <strong style={{ color: '#FFF' }}>{data.length}</strong> attendance audit records
+              </div>
+              <div style={{ display: 'flex', gap: '12px', fontSize: '0.76rem' }}>
+                <span style={{ color: 'var(--success)' }}>
+                  Present: <strong>{data.filter((r) => r.status === 'PRESENT').length}</strong>
+                </span>
+                <span style={{ color: 'var(--warning)' }}>
+                  Half-Day: <strong>{data.filter((r) => r.status === 'HALF_DAY').length}</strong>
+                </span>
+                <span style={{ color: 'var(--danger)' }}>
+                  Absent: <strong>{data.filter((r) => r.status === 'ABSENT').length}</strong>
+                </span>
+              </div>
+            </div>
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Date</th>
+                  <th>Audit Date</th>
                   <th>Worker Code</th>
-                  <th>Worker Name</th>
+                  <th>Personnel Name</th>
                   <th>Department</th>
-                  <th>Work Location</th>
+                  <th>Facility Location</th>
                   <th>Shift</th>
                   <th>Status</th>
-                  <th>Times</th>
+                  <th>Check In / Out</th>
                   <th>Overtime</th>
                   <th>Remarks</th>
                 </tr>
@@ -253,138 +369,290 @@ export const ReportsPage = () => {
               <tbody>
                 {data.map((r) => (
                   <tr key={r.id}>
-                    <td style={{ fontWeight: 600 }}>{r.attendanceDate}</td>
-                    <td>
-                      <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--primary)', fontWeight: 600 }}>
-                        {r.worker?.workerCode}
-                      </span>
+                    <td style={{ fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
+                      {r.attendanceDate}
                     </td>
-                    <td style={{ fontWeight: 600, color: '#FFF' }}>{r.worker?.fullName}</td>
-                    <td>{r.worker?.department?.name || '—'}</td>
-                    <td>{r.workSite?.name}</td>
-                    <td>{r.shift?.name}</td>
-                    <td><StatusBadge status={r.status} /></td>
-                    <td>{r.checkIn ? `${r.checkIn} - ${r.checkOut || 'Active'}` : '—'}</td>
-                    <td>{r.overtimeMinutes > 0 ? `${r.overtimeMinutes}m` : '0m'}</td>
-                    <td>{r.remarks || '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )
-        ) : reportType === 'workers' ? (
-          data.length === 0 ? (
-            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-              No worker personnel records found.
-            </div>
-          ) : (
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Worker Code</th>
-                  <th>Full Name</th>
-                  <th>Phone</th>
-                  <th>Joining Date</th>
-                  <th>Department</th>
-                  <th>Skill Category</th>
-                  <th>Employment Type</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.map((w) => (
-                  <tr key={w.id}>
-                    <td>
-                      <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--primary)', fontWeight: 600 }}>
-                        {w.workerCode}
-                      </span>
-                    </td>
-                    <td style={{ fontWeight: 600, color: '#FFF' }}>{w.fullName}</td>
-                    <td>{w.phone}</td>
-                    <td>{w.joiningDate}</td>
-                    <td>{w.department?.name || '—'}</td>
-                    <td>{w.skillCategory?.name || '—'}</td>
-                    <td>{w.employmentType?.replace(/_/g, ' ')}</td>
-                    <td><StatusBadge status={w.status} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )
-        ) : reportType === 'site-comparison' ? (
-          <div>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-subtle)' }}>
-              <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                Site-by-Site Labour Performance Matrix
-              </h3>
-              <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                Side-by-side comparison of active workforce deployments, attendance compliance and supervisor supervision
-              </p>
-            </div>
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Work Site</th>
-                  <th>Location Address</th>
-                  <th>Active Workforce</th>
-                  <th>Present Today</th>
-                  <th>Half Day</th>
-                  <th>Absent</th>
-                  <th>Attendance Rate</th>
-                  <th>Supervisors</th>
-                </tr>
-              </thead>
-              <tbody>
-                {siteComparisons.map((sc) => (
-                  <tr key={sc.id}>
-                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{sc.name}</td>
-                    <td style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{sc.address}</td>
-                    <td>
-                      <span style={{ fontWeight: 700, color: 'var(--primary)' }}>{sc.scheduled}</span> worker(s)
-                    </td>
-                    <td style={{ color: 'var(--success)', fontWeight: 600 }}>{sc.present}</td>
-                    <td style={{ color: 'var(--warning)' }}>{sc.halfDay}</td>
-                    <td style={{ color: 'var(--danger)' }}>{sc.absent}</td>
                     <td>
                       <span
                         style={{
+                          fontFamily: 'var(--font-mono)',
+                          fontSize: '0.78rem',
                           fontWeight: 700,
-                          fontSize: '0.88rem',
-                          color: parseFloat(sc.rate) >= 80 ? 'var(--success)' : parseFloat(sc.rate) >= 60 ? 'var(--warning)' : 'var(--danger)',
+                          color: 'var(--primary)',
+                          background: 'rgba(59, 130, 246, 0.1)',
+                          padding: '2px 7px',
+                          borderRadius: 'var(--radius-sm)',
+                          border: '1px solid rgba(59, 130, 246, 0.25)',
                         }}
                       >
-                        {sc.rate}
+                        {r.worker?.workerCode}
                       </span>
                     </td>
-                    <td style={{ fontSize: '0.82rem' }}>
-                      {sc.supervisorCount > 0 ? `${sc.supervisorCount} Assigned` : <span style={{ color: 'var(--warning)' }}>No Supervisor</span>}
+                    <td>
+                      <span style={{ fontWeight: 600, color: '#FFF' }}>{r.worker?.fullName}</span>
+                    </td>
+                    <td>
+                      <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                        {r.worker?.department?.name || '—'}
+                      </span>
+                    </td>
+                    <td>
+                      <span style={{ fontSize: '0.82rem', color: 'var(--text-primary)' }}>
+                        {r.workSite?.name || '—'}
+                      </span>
+                    </td>
+                    <td>
+                      <span
+                        style={{
+                          fontSize: '0.76rem',
+                          padding: '2px 8px',
+                          borderRadius: 'var(--radius-sm)',
+                          background: 'rgba(255, 255, 255, 0.05)',
+                          border: '1px solid var(--border-subtle)',
+                        }}
+                      >
+                        {r.shift?.name || 'General'}
+                      </span>
+                    </td>
+                    <td>
+                      <StatusBadge status={r.status} />
+                    </td>
+                    <td style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                      {r.checkIn ? `${r.checkIn} → ${r.checkOut || 'Active'}` : '—'}
+                    </td>
+                    <td>
+                      {r.overtimeMinutes > 0 ? (
+                        <span style={{ color: 'var(--warning)', fontWeight: 600, fontSize: '0.82rem' }}>
+                          +{r.overtimeMinutes}m
+                        </span>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>0m</span>
+                      )}
+                    </td>
+                    <td style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {r.remarks || '—'}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        ) : reportType === 'daily-operations' ? (
-          <div style={{ padding: '24px' }}>
+        )
+      ) : reportType === 'workers' ? (
+        data.length === 0 ? (
+          <EmptyState
+            icon={Users}
+            title="No Worker Records"
+            description="No worker personnel profiles registered in the system."
+          />
+        ) : (
+          <div className="table-container">
+            <div
+              style={{
+                padding: '12px 18px',
+                borderBottom: '1px solid var(--border-subtle)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                Active Roster: <strong style={{ color: '#FFF' }}>{data.length}</strong> personnel profiles
+              </div>
+            </div>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Worker Code</th>
+                  <th>Full Name</th>
+                  <th>Phone Number</th>
+                  <th>Joining Date</th>
+                  <th>Department</th>
+                  <th>Skill Category</th>
+                  <th>Employment Type</th>
+                  <th>Operational Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.map((w) => (
+                  <tr key={w.id}>
+                    <td>
+                      <span
+                        style={{
+                          fontFamily: 'var(--font-mono)',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          color: 'var(--primary)',
+                          background: 'rgba(59, 130, 246, 0.1)',
+                          padding: '2px 7px',
+                          borderRadius: 'var(--radius-sm)',
+                          border: '1px solid rgba(59, 130, 246, 0.25)',
+                        }}
+                      >
+                        {w.workerCode}
+                      </span>
+                    </td>
+                    <td>
+                      <span style={{ fontWeight: 600, color: '#FFF' }}>{w.fullName}</span>
+                    </td>
+                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                      {w.phone}
+                    </td>
+                    <td style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{w.joiningDate}</td>
+                    <td>{w.department?.name || '—'}</td>
+                    <td>{w.skillCategory?.name || '—'}</td>
+                    <td>
+                      <span style={{ fontSize: '0.78rem', textTransform: 'capitalize' }}>
+                        {w.employmentType?.toLowerCase().replace(/_/g, ' ')}
+                      </span>
+                    </td>
+                    <td>
+                      <StatusBadge status={w.status} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      ) : reportType === 'site-comparison' ? (
+        <div className="table-container">
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-subtle)' }}>
+            <h3 style={{ fontSize: '0.98rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+              Cross-Facility Deployment & Attendance Matrix
+            </h3>
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+              Benchmarking active worker allocations, real-time presence rates, and supervisor coverage
+            </p>
+          </div>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Work Facility</th>
+                <th>Physical Address</th>
+                <th>Scheduled Workforce</th>
+                <th>Present Today</th>
+                <th>Half-Day</th>
+                <th>Absent</th>
+                <th>Attendance Ratio</th>
+                <th>Supervision</th>
+              </tr>
+            </thead>
+            <tbody>
+              {siteComparisons.map((sc) => (
+                <tr key={sc.id}>
+                  <td>
+                    <span style={{ fontWeight: 600, color: '#FFF' }}>{sc.name}</span>
+                  </td>
+                  <td style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{sc.address}</td>
+                  <td>
+                    <span style={{ fontWeight: 700, color: 'var(--primary)', fontSize: '0.92rem' }}>
+                      {sc.scheduled}
+                    </span>{' '}
+                    <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>personnel</span>
+                  </td>
+                  <td>
+                    <span style={{ color: 'var(--success)', fontWeight: 600 }}>{sc.present}</span>
+                  </td>
+                  <td>
+                    <span style={{ color: 'var(--warning)', fontWeight: 600 }}>{sc.halfDay}</span>
+                  </td>
+                  <td>
+                    <span style={{ color: 'var(--danger)', fontWeight: 600 }}>{sc.absent}</span>
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span
+                        style={{
+                          fontWeight: 700,
+                          fontSize: '0.86rem',
+                          color:
+                            parseFloat(sc.rate) >= 80
+                              ? 'var(--success)'
+                              : parseFloat(sc.rate) >= 60
+                              ? 'var(--warning)'
+                              : 'var(--danger)',
+                        }}
+                      >
+                        {sc.rate}
+                      </span>
+                      <div
+                        style={{
+                          flex: 1,
+                          height: '6px',
+                          background: 'rgba(255, 255, 255, 0.08)',
+                          borderRadius: '3px',
+                          overflow: 'hidden',
+                          minWidth: '50px',
+                        }}
+                      >
+                        <div
+                          style={{
+                            height: '100%',
+                            width: sc.rate,
+                            background:
+                              parseFloat(sc.rate) >= 80
+                                ? 'var(--success)'
+                                : parseFloat(sc.rate) >= 60
+                                ? 'var(--warning)'
+                                : 'var(--danger)',
+                            borderRadius: '3px',
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </td>
+                  <td style={{ fontSize: '0.82rem' }}>
+                    {sc.supervisorCount > 0 ? (
+                      <span className="badge badge-present">{sc.supervisorCount} Assigned</span>
+                    ) : (
+                      <span className="badge badge-absent">Unsupervised</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : reportType === 'daily-operations' ? (
+        <div>
+          {/* Executive AI Briefing Section */}
+          <div
+            className="card"
+            style={{
+              padding: '20px 24px',
+              borderRadius: 'var(--radius-lg)',
+              background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(139, 92, 246, 0.08) 100%)',
+              border: '1px solid rgba(59, 130, 246, 0.35)',
+              marginBottom: '24px',
+              boxShadow: '0 8px 30px rgba(0, 0, 0, 0.25)',
+            }}
+          >
             <div
               style={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                padding: '16px 20px',
-                borderRadius: 'var(--radius-lg)',
-                background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(139, 92, 246, 0.08) 100%)',
-                border: '1px solid rgba(59, 130, 246, 0.3)',
-                marginBottom: '20px',
+                flexWrap: 'wrap',
+                gap: '14px',
               }}
             >
               <div>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Sparkles size={20} color="var(--primary)" />
-                  Daily Operations Snapshot & Executive AI Report
+                <h3
+                  style={{
+                    fontSize: '1.05rem',
+                    fontWeight: 700,
+                    color: '#FFF',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '9px',
+                  }}
+                >
+                  <Sparkles size={18} color="var(--primary)" />
+                  Executive AI Operational Intelligence Briefing
                 </h3>
                 <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                  Live operational telemetry synthesized from active attendance logs, assignments, and leave records.
+                  Automated synthesis of live shift attendance, site deployment velocity, and unresolved bottlenecks.
                 </p>
               </div>
 
@@ -392,82 +660,101 @@ export const ReportsPage = () => {
                 onClick={handleGenerateAiBriefing}
                 disabled={generatingAi}
                 className="btn btn-primary"
-                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
               >
                 <Bot size={16} />
-                <span>{generatingAi ? 'Generating AI Briefing...' : 'Generate AI Briefing'}</span>
+                <span>{generatingAi ? 'Synthesizing Briefing...' : 'Generate Operations Briefing'}</span>
               </button>
             </div>
 
-            {/* AI Generated Briefing Box */}
             {aiBriefing && (
               <div
                 style={{
-                  padding: '20px',
-                  backgroundColor: 'var(--bg-card)',
+                  marginTop: '18px',
+                  padding: '18px 20px',
+                  backgroundColor: 'rgba(15, 23, 42, 0.8)',
                   borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--border-medium)',
-                  marginBottom: '20px',
-                  boxShadow: 'var(--shadow-sm)',
+                  border: '1px solid rgba(59, 130, 246, 0.25)',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '8px' }}>
-                  <Bot size={18} color="var(--primary)" />
-                  <strong style={{ color: 'var(--text-primary)', fontSize: '0.95rem' }}>Executive AI Operational Summary</strong>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    marginBottom: '12px',
+                    borderBottom: '1px solid var(--border-subtle)',
+                    paddingBottom: '8px',
+                  }}
+                >
+                  <Bot size={16} color="var(--primary)" />
+                  <strong style={{ color: 'var(--text-primary)', fontSize: '0.88rem' }}>
+                    Generated Operations Digest
+                  </strong>
                 </div>
                 <MarkdownContent content={aiBriefing} />
               </div>
             )}
-
-            {/* Quick Metrics Grid */}
-            {dailySnapshot && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
-                <div className="card" style={{ padding: '16px' }}>
-                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Today Attendance Rate</span>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--primary)', marginTop: '4px' }}>
-                    {dailySnapshot.dashStats?.attendancePercentage || '0'}%
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                    {dailySnapshot.dashStats?.presentToday || 0} Present / {dailySnapshot.dashStats?.absentToday || 0} Absent
-                  </div>
-                </div>
-
-                <div className="card" style={{ padding: '16px' }}>
-                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Active Workforce</span>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--success)', marginTop: '4px' }}>
-                    {dailySnapshot.dashStats?.activeWorkers || 0}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                    Across {dailySnapshot.dashStats?.totalSites || 0} operational site(s)
-                  </div>
-                </div>
-
-                <div className="card" style={{ padding: '16px' }}>
-                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Pending Approvals</span>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--warning)', marginTop: '4px' }}>
-                    {dailySnapshot.dashStats?.pendingLeaves || 0}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                    Site leave request(s) awaiting review
-                  </div>
-                </div>
-
-                {dailySnapshot.insights?.outstandingPayroll && (
-                  <div className="card" style={{ padding: '16px' }}>
-                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Outstanding Payroll</span>
-                    <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--purple)', marginTop: '4px' }}>
-                      {dailySnapshot.insights.outstandingPayroll}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                      Pending worker disbursement
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
-        ) : null}
-      </div>
+
+          {/* Telemetry Metrics Grid */}
+          {dailySnapshot && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '16px' }}>
+              <div className="card" style={{ padding: '18px' }}>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                  TODAY'S ATTENDANCE RATIO
+                </span>
+                <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--primary)', marginTop: '6px' }}>
+                  {dailySnapshot.dashStats?.attendancePercentage || '0'}%
+                </div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                  <strong style={{ color: 'var(--success)' }}>{dailySnapshot.dashStats?.presentToday || 0}</strong>{' '}
+                  Present vs <strong style={{ color: 'var(--danger)' }}>{dailySnapshot.dashStats?.absentToday || 0}</strong>{' '}
+                  Absent
+                </div>
+              </div>
+
+              <div className="card" style={{ padding: '18px' }}>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                  ACTIVE REGISTERED WORKFORCE
+                </span>
+                <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--success)', marginTop: '6px' }}>
+                  {dailySnapshot.dashStats?.activeWorkers || 0}
+                </div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                  Deployed across {dailySnapshot.dashStats?.totalSites || 0} operational facility locations
+                </div>
+              </div>
+
+              <div className="card" style={{ padding: '18px' }}>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                  UNRESOLVED LEAVE APPROVALS
+                </span>
+                <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--warning)', marginTop: '6px' }}>
+                  {dailySnapshot.dashStats?.pendingLeaves || 0}
+                </div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                  Site personnel absence requests awaiting administrative action
+                </div>
+              </div>
+
+              {dailySnapshot.insights?.outstandingPayroll && (
+                <div className="card" style={{ padding: '18px' }}>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                    OUTSTANDING PAYROLL LEDGER
+                  </span>
+                  <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--purple)', marginTop: '6px' }}>
+                    {dailySnapshot.insights.outstandingPayroll}
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                    Accumulated wages pending financial disbursement
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 };

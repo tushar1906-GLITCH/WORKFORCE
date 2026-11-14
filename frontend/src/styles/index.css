@@ -1,5 +1,8 @@
 @import './variables.css';
 
+/* ==========================================================================
+   Base & Resets
+   ========================================================================== */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -42,25 +45,67 @@ button, input, select, textarea {
   background: rgba(255, 255, 255, 0.25);
 }
 
-/* App Shell */
+/* ==========================================================================
+   App Shell & Navigation
+   ========================================================================== */
 .app-container {
   display: flex;
   min-height: 100vh;
   background-color: var(--bg-base);
+  position: relative;
 }
 
+/* Sidebar */
 .sidebar {
   width: var(--sidebar-width);
-  background-color: var(--bg-surface);
-  border-right: 1px solid var(--border-subtle);
+  background-color: var(--sidebar-bg);
+  border-right: 1px solid var(--sidebar-border);
   display: flex;
   flex-direction: column;
   position: fixed;
   top: 0;
   bottom: 0;
   left: 0;
-  z-index: 40;
-  transition: transform 0.2s ease;
+  z-index: var(--z-sidebar);
+  transition: width var(--transition-normal), transform var(--transition-normal);
+  overflow: hidden;
+}
+
+/* Collapsed Sidebar States */
+.sidebar.collapsed {
+  width: var(--sidebar-collapsed-width);
+}
+
+.sidebar.collapsed .sidebar-brand span,
+.sidebar-collapsed .sidebar-brand span {
+  display: none;
+}
+
+.sidebar.collapsed .sidebar-brand-badge,
+.sidebar-collapsed .sidebar-brand-badge {
+  display: none;
+}
+
+.sidebar.collapsed .nav-section-title,
+.sidebar-collapsed .nav-section-title {
+  display: none;
+}
+
+.sidebar.collapsed .nav-item span,
+.sidebar-collapsed .nav-item span {
+  display: none;
+}
+
+.sidebar.collapsed .nav-item,
+.sidebar-collapsed .nav-item {
+  justify-content: center;
+  padding: 10px 0;
+}
+
+.sidebar.collapsed .sidebar-header,
+.sidebar-collapsed .sidebar-header {
+  padding: 0;
+  justify-content: center;
 }
 
 .sidebar-header {
@@ -68,8 +113,9 @@ button, input, select, textarea {
   display: flex;
   align-items: center;
   padding: 0 20px;
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--sidebar-border);
   gap: 12px;
+  flex-shrink: 0;
 }
 
 .sidebar-brand {
@@ -80,6 +126,7 @@ button, input, select, textarea {
   display: flex;
   align-items: center;
   gap: 10px;
+  white-space: nowrap;
 }
 
 .sidebar-brand-badge {
@@ -96,6 +143,7 @@ button, input, select, textarea {
 .sidebar-nav {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 16px 12px;
   display: flex;
   flex-direction: column;
@@ -109,6 +157,7 @@ button, input, select, textarea {
   letter-spacing: 0.08em;
   color: var(--text-muted);
   padding: 12px 10px 6px;
+  white-space: nowrap;
 }
 
 .nav-item {
@@ -120,7 +169,9 @@ button, input, select, textarea {
   font-size: 0.88rem;
   font-weight: 500;
   border-radius: var(--radius-md);
-  transition: all 0.15s ease;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+  position: relative;
 }
 
 .nav-item:hover {
@@ -131,7 +182,9 @@ button, input, select, textarea {
 .nav-item.active {
   background-color: rgba(59, 130, 246, 0.12);
   color: var(--primary);
-  border: 1px solid rgba(59, 130, 246, 0.25);
+  border: none;
+  border-left: 3px solid var(--primary);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
   font-weight: 600;
 }
 
@@ -141,18 +194,77 @@ button, input, select, textarea {
   flex-shrink: 0;
 }
 
+/* Sidebar Toggle Button */
+.sidebar-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 40px;
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--sidebar-border);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.sidebar-toggle-btn:hover {
+  color: var(--text-primary);
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+/* User Profile Section in Sidebar */
+.user-profile-section {
+  padding: 12px 16px;
+  border-top: 1px solid var(--sidebar-border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background-color: rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+}
+
+.sidebar.collapsed .user-profile-section,
+.sidebar-collapsed .user-profile-section {
+  padding: 12px 0;
+  justify-content: center;
+}
+
+.sidebar.collapsed .user-profile-section .user-info,
+.sidebar-collapsed .user-profile-section .user-info {
+  display: none;
+}
+
+/* Sidebar Mobile Overlay */
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+  z-index: 35;
+  transition: opacity var(--transition-normal);
+}
+
+/* Main Content Area */
 .main-content {
   margin-left: var(--sidebar-width);
   flex: 1;
   display: flex;
   flex-direction: column;
   min-width: 0;
+  transition: margin-left var(--transition-normal);
 }
 
+.main-content.sidebar-collapsed {
+  margin-left: var(--sidebar-collapsed-width);
+}
+
+/* Topbar */
 .topbar {
   height: var(--header-height);
-  background-color: rgba(17, 24, 39, 0.8);
-  backdrop-filter: blur(8px);
+  background-color: rgba(17, 24, 39, 0.85);
+  backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
@@ -160,7 +272,42 @@ button, input, select, textarea {
   padding: 0 28px;
   position: sticky;
   top: 0;
-  z-index: 30;
+  z-index: var(--z-header);
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Breadcrumb Navigation */
+.page-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.page-breadcrumb a {
+  color: var(--text-secondary);
+  transition: color var(--transition-fast);
+}
+
+.page-breadcrumb a:hover {
+  color: var(--text-primary);
+}
+
+.page-breadcrumb span.current {
+  color: var(--text-primary);
+  font-weight: 500;
 }
 
 .page-wrapper {
@@ -171,7 +318,9 @@ button, input, select, textarea {
   margin: 0 auto;
 }
 
-/* Page Headers */
+/* ==========================================================================
+   Page Headers & Animations
+   ========================================================================== */
 .page-header {
   display: flex;
   align-items: center;
@@ -194,14 +343,32 @@ button, input, select, textarea {
   margin-top: 4px;
 }
 
-/* Cards & Surfaces */
+.page-enter {
+  animation: pageEnter var(--transition-slow) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==========================================================================
+   Cards, Surfaces & Panels
+   ========================================================================== */
 .card {
   background-color: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   padding: 20px;
   box-shadow: var(--shadow-sm);
-  transition: border-color 0.15s ease;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
+  position: relative;
 }
 
 .card:hover {
@@ -221,7 +388,47 @@ button, input, select, textarea {
   color: var(--text-primary);
 }
 
-/* Grid Layouts */
+/* Clickable Action Panel */
+.action-panel {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: transform var(--transition-normal), border-color var(--transition-normal), box-shadow var(--transition-normal);
+}
+
+.action-panel:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-focus);
+  box-shadow: var(--shadow-md), var(--shadow-glow);
+}
+
+/* Card Metric Display */
+.card-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.card-metric .metric-value {
+  font-size: 1.85rem;
+  font-weight: 700;
+  color: #FFFFFF;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.card-metric .metric-label {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* ==========================================================================
+   Grid Layouts
+   ========================================================================== */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -229,7 +436,75 @@ button, input, select, textarea {
   margin-bottom: 24px;
 }
 
-/* Buttons */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .form-grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ==========================================================================
+   Filter Pills & Filters
+   ========================================================================== */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.filter-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.filter-pill:hover {
+  background-color: rgba(255, 255, 255, 0.09);
+  color: var(--text-primary);
+  border-color: var(--border-medium);
+}
+
+.filter-pill.active {
+  background-color: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   Buttons
+   ========================================================================== */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -241,7 +516,7 @@ button, input, select, textarea {
   border-radius: var(--radius-md);
   border: 1px solid transparent;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all var(--transition-fast);
   white-space: nowrap;
 }
 
@@ -253,11 +528,11 @@ button, input, select, textarea {
 .btn-primary {
   background-color: var(--primary);
   color: #FFFFFF;
-  box-shadow: 0 1px 2px rgba(59, 130, 246, 0.4);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(59, 130, 246, 0.4);
 }
 .btn-primary:hover:not(:disabled) {
   background-color: var(--primary-hover);
-  box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 0 12px rgba(59, 130, 246, 0.45);
 }
 
 .btn-secondary {
@@ -306,7 +581,9 @@ button, input, select, textarea {
   font-size: 1rem;
 }
 
-/* Forms & Inputs */
+/* ==========================================================================
+   Forms & Inputs
+   ========================================================================== */
 .form-group {
   display: flex;
   flex-direction: column;
@@ -328,7 +605,7 @@ button, input, select, textarea {
   font-size: 0.88rem;
   color: var(--text-primary);
   outline: none;
-  transition: all 0.15s ease;
+  transition: all var(--transition-fast);
   width: 100%;
 }
 
@@ -343,7 +620,9 @@ button, input, select, textarea {
   margin-top: 4px;
 }
 
-/* Tables */
+/* ==========================================================================
+   Data Tables
+   ========================================================================== */
 .table-container {
   background-color: var(--bg-card);
   border: 1px solid var(--border-subtle);
@@ -383,10 +662,12 @@ button, input, select, textarea {
 }
 
 .data-table tbody tr:hover {
-  background-color: rgba(255, 255, 255, 0.02);
+  background-color: rgba(255, 255, 255, 0.035);
 }
 
-/* Status Badges */
+/* ==========================================================================
+   Badges & Indicators
+   ========================================================================== */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -418,7 +699,7 @@ button, input, select, textarea {
   color: var(--warning);
 }
 
-.badge-on-leave, .badge-holiday {
+.badge-on-leave, .badge-holiday, .badge-on-leave-approved {
   background-color: var(--info-bg);
   border: 1px solid var(--info-border);
   color: var(--info);
@@ -436,7 +717,170 @@ button, input, select, textarea {
   color: var(--neutral);
 }
 
-/* Modals */
+/* Trend Indicator */
+.stat-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.stat-trend.positive {
+  color: var(--success);
+}
+
+.stat-trend.negative {
+  color: var(--danger);
+}
+
+/* ==========================================================================
+   Avatars & Icon Boxes
+   ========================================================================== */
+.avatar-initials {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  background: var(--gradient-primary);
+  color: #FFFFFF;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.icon-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background-color: rgba(59, 130, 246, 0.12);
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.icon-box.icon-box-success {
+  background-color: var(--success-bg);
+  color: var(--success);
+}
+
+.icon-box.icon-box-danger {
+  background-color: var(--danger-bg);
+  color: var(--danger);
+}
+
+.icon-box.icon-box-warning {
+  background-color: var(--warning-bg);
+  color: var(--warning);
+}
+
+.icon-box.icon-box-purple {
+  background-color: var(--purple-bg);
+  color: var(--purple);
+}
+
+/* ==========================================================================
+   Bulk Action Bar & Section Divider
+   ========================================================================== */
+.bulk-action-bar {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-lg);
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  box-shadow: var(--shadow-lg);
+  z-index: 25;
+  margin-top: 16px;
+  backdrop-filter: blur(8px);
+}
+
+.section-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+/* ==========================================================================
+   Skeleton Loading State
+   ========================================================================== */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-card) 25%,
+    var(--bg-card-hover) 50%,
+    var(--bg-card) 25%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-md);
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* ==========================================================================
+   Empty State
+   ========================================================================== */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 48px 24px;
+  gap: 12px;
+}
+
+.empty-state-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-full);
+  background-color: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.empty-state-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.empty-state-description {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  max-width: 420px;
+  line-height: 1.5;
+}
+
+/* ==========================================================================
+   Modals
+   ========================================================================== */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -445,7 +889,7 @@ button, input, select, textarea {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 50;
+  z-index: var(--z-modal);
   padding: 16px;
 }
 
@@ -496,21 +940,14 @@ button, input, select, textarea {
   }
 }
 
-/* Filter Bar */
-.filter-bar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 18px;
-  flex-wrap: wrap;
-}
-
-/* Toast Alerts */
+/* ==========================================================================
+   Toast Alerts
+   ========================================================================== */
 .toast-container {
   position: fixed;
-  bottom: 24px;
+  bottom: 96px;
   right: 24px;
-  z-index: 100;
+  z-index: var(--z-toast);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -560,7 +997,9 @@ button, input, select, textarea {
   }
 }
 
-/* Responsive adjustments */
+/* ==========================================================================
+   Responsive Adjustments
+   ========================================================================== */
 @media (max-width: 900px) {
   .sidebar {
     transform: translateX(-100%);
@@ -569,6 +1008,6 @@ button, input, select, textarea {
     transform: translateX(0);
   }
   .main-content {
-    margin-left: 0;
+    margin-left: 0 !important;
   }
 }

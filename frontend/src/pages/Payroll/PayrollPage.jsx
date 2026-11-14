@@ -5,6 +5,9 @@ import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
 import StatusBadge from '../../components/common/StatusBadge';
 import Modal from '../../components/common/Modal';
+import PageHeader from '../../components/common/PageHeader';
+import { TableSkeleton } from '../../components/common/LoadingSkeleton';
+import EmptyState from '../../components/common/EmptyState';
 import {
   Banknote,
   Plus,
@@ -14,6 +17,8 @@ import {
   AlertCircle,
   Clock,
   ShieldCheck,
+  Calculator,
+  ArrowRight,
 } from 'lucide-react';
 
 export const PayrollPage = () => {
@@ -65,42 +70,51 @@ export const PayrollPage = () => {
   };
 
   return (
-    <div>
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Payroll Runs & Wage Calculation</h1>
-          <p className="page-description">
-            Generate, review and approve immutable payroll runs calculated from finalized attendance and wage rates
-          </p>
-        </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <PageHeader
+        title="Payroll Operations & Calculations"
+        description="Calculate period wages from finalized attendance, deduct active advances, and approve immutable disbursements"
+        actions={
+          <button
+            onClick={() => setGenerateModalOpen(true)}
+            className="btn btn-primary btn-sm"
+            style={{ gap: '6px', height: '36px' }}
+          >
+            <Plus size={16} />
+            <span>Generate New Payroll Run</span>
+          </button>
+        }
+      />
 
-        <button
-          onClick={() => setGenerateModalOpen(true)}
-          className="btn btn-primary"
-        >
-          <Plus size={16} /> Generate New Payroll Run
-        </button>
-      </div>
-
-      <div className="table-container">
-        {loading ? (
-          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-            Loading payroll history...
-          </div>
-        ) : runs.length === 0 ? (
-          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-            No payroll runs generated yet. Click "Generate New Payroll Run" to start.
-          </div>
-        ) : (
+      {loading ? (
+        <TableSkeleton rows={5} cols={7} />
+      ) : runs.length === 0 ? (
+        <EmptyState
+          icon={Banknote}
+          title="No payroll runs generated yet"
+          description="Click 'Generate New Payroll Run' to execute calculation for your latest attendance period."
+          action={
+            <button
+              onClick={() => setGenerateModalOpen(true)}
+              className="btn btn-secondary btn-sm"
+              style={{ gap: '6px' }}
+            >
+              <Plus size={14} />
+              <span>Generate Payroll Run</span>
+            </button>
+          }
+        />
+      ) : (
+        <div className="table-container">
           <table className="data-table">
             <thead>
               <tr>
                 <th>Payroll Period</th>
                 <th>Status</th>
-                <th>Total Workers</th>
-                <th>Net Payable Amount</th>
-                <th>Created By</th>
-                <th>Approved By / Date</th>
+                <th>Workforce Count</th>
+                <th>Total Net Payable</th>
+                <th>Prepared By</th>
+                <th>Approval Audit</th>
                 <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
@@ -108,111 +122,150 @@ export const PayrollPage = () => {
               {runs.map((r) => (
                 <tr key={r.id}>
                   <td>
-                    <div style={{ fontWeight: 600, color: '#FFF' }}>
-                      {r.periodStart} to {r.periodEnd}
+                    <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.88rem' }}>
+                      {r.periodStart} &rarr; {r.periodEnd}
                     </div>
                     {r.notes && (
-                      <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>{r.notes}</div>
+                      <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                        {r.notes}
+                      </div>
                     )}
                   </td>
                   <td>
                     <StatusBadge status={r.status} />
                   </td>
                   <td>
-                    <strong>{r.totalWorkers}</strong> personnel
-                  </td>
-                  <td>
-                    <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--success)' }}>
-                      ₹{parseFloat(r.totalAmount).toLocaleString()}
+                    <span style={{ fontSize: '0.84rem' }}>
+                      <strong>{r.totalWorkers}</strong> personnel
                     </span>
                   </td>
-                  <td>{r.createdByUser?.fullName || 'Administrator'}</td>
+                  <td>
+                    <span
+                      style={{
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: '1rem',
+                        fontWeight: 700,
+                        color: 'var(--success)',
+                      }}
+                    >
+                      ₹{parseFloat(r.totalAmount).toLocaleString('en-IN')}
+                    </span>
+                  </td>
+                  <td>
+                    <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                      {r.createdByUser?.fullName || 'Administrator'}
+                    </span>
+                  </td>
                   <td>
                     {r.approvedByUser ? (
                       <div>
-                        <div style={{ color: '#FFF' }}>{r.approvedByUser.fullName}</div>
+                        <div style={{ fontSize: '0.82rem', color: 'var(--text-primary)', fontWeight: 500 }}>
+                          {r.approvedByUser.fullName}
+                        </div>
                         <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                           {new Date(r.approvedAt).toLocaleDateString()}
                         </div>
                       </div>
                     ) : (
-                      <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Pending Approval</span>
+                      <span style={{ color: 'var(--warning)', fontSize: '0.76rem', fontWeight: 600 }}>
+                        Pending Executive Approval
+                      </span>
                     )}
                   </td>
                   <td style={{ textAlign: 'right' }}>
                     <button
                       onClick={() => navigate(`/payroll/${r.id}`)}
                       className="btn btn-secondary btn-sm"
+                      style={{ padding: '4px 10px', fontSize: '0.78rem', gap: '4px' }}
                     >
-                      <Eye size={14} /> Review Breakdown
+                      <Eye size={13} />
+                      <span>Review Breakdown</span>
                     </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Generate Payroll Modal */}
       <Modal
         isOpen={generateModalOpen}
         onClose={() => setGenerateModalOpen(false)}
-        title="Generate Period Payroll Calculation"
-        maxWidth="500px"
+        title="Execute Payroll Calculation Engine"
+        subtitle="Aggregate verified attendance records and compute net wages"
+        maxWidth="520px"
         footer={
           <>
-            <button onClick={() => setGenerateModalOpen(false)} className="btn btn-secondary">
+            <button
+              type="button"
+              onClick={() => setGenerateModalOpen(false)}
+              className="btn btn-secondary"
+            >
               Cancel
             </button>
             <button
+              type="button"
               onClick={handleGeneratePayroll}
               className="btn btn-primary"
               disabled={generating || !form.periodStart || !form.periodEnd}
             >
-              {generating ? 'Calculating...' : 'Run Calculation Engine'}
+              {generating ? 'Calculating Wages...' : 'Run Calculation Engine'}
             </button>
           </>
         }
       >
         <form onSubmit={handleGeneratePayroll}>
-          <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-            The payroll engine pulls all finalized attendance records, applies paid/unpaid leave rules, calculates regular & overtime earnings, recovers active advances, and creates a draft payroll snapshot.
-          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <p
+              style={{
+                fontSize: '0.84rem',
+                color: 'var(--text-secondary)',
+                lineHeight: 1.5,
+                padding: '10px 14px',
+                backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid rgba(59, 130, 246, 0.25)',
+              }}
+            >
+              The payroll engine scans all finalized shift attendance, applies daily wage rates, computes overtime allowances, deducts active worker advances, and creates a reviewable draft snapshot.
+            </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-            <div className="form-group">
-              <label className="form-label">Period Start Date *</label>
-              <input
-                type="date"
-                className="form-control"
-                value={form.periodStart}
-                onChange={(e) => setForm({ ...form, periodStart: e.target.value })}
-                required
-              />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div className="form-group">
+                <label className="form-label">Period Start Date *</label>
+                <input
+                  type="date"
+                  className="form-control"
+                  value={form.periodStart}
+                  onChange={(e) => setForm({ ...form, periodStart: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Period End Date *</label>
+                <input
+                  type="date"
+                  className="form-control"
+                  value={form.periodEnd}
+                  onChange={(e) => setForm({ ...form, periodEnd: e.target.value })}
+                  required
+                />
+              </div>
             </div>
 
             <div className="form-group">
-              <label className="form-label">Period End Date *</label>
+              <label className="form-label">Run Description / Period Label</label>
               <input
-                type="date"
+                type="text"
                 className="form-control"
-                value={form.periodEnd}
-                onChange={(e) => setForm({ ...form, periodEnd: e.target.value })}
-                required
+                placeholder="e.g. Mid-Month Labour Wage Run (Fortnight 1)"
+                value={form.notes}
+                onChange={(e) => setForm({ ...form, notes: e.target.value })}
               />
             </div>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Run Notes / Period Label</label>
-            <input
-              type="text"
-              className="form-control"
-              placeholder="e.g. Mid-month bi-weekly wage distribution"
-              value={form.notes}
-              onChange={(e) => setForm({ ...form, notes: e.target.value })}
-            />
           </div>
         </form>
       </Modal>
