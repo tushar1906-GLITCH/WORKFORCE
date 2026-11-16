@@ -34,20 +34,34 @@ export class WorkSitesService {
       if (status) {
         where.status = status;
       }
-      return this.siteRepo.find({
+      const sites = await this.siteRepo.find({
         where,
         order: { name: 'ASC' },
         relations: ['supervisorSites', 'supervisorSites.user'],
       });
+      return sites.map((s) => ({
+        ...s,
+        supervisors: s.supervisorSites?.map((ss) => ss.user).filter(Boolean) || [],
+      }));
     }
 
     // Supervisor: only assigned sites (filtered by status if requested)
     const supSites = await this.ssRepo.find({
       where: { userId: user.id },
-      relations: ['workSite'],
+      relations: ['workSite', 'workSite.supervisorSites', 'workSite.supervisorSites.user'],
     });
 
-    const userSites = supSites.map((ss) => ss.workSite).filter(Boolean);
+    const userSites = supSites
+      .map((ss) => {
+        const site = ss.workSite;
+        if (!site) return null;
+        return {
+          ...site,
+          supervisors: site.supervisorSites?.map((subSs) => subSs.user).filter(Boolean) || [],
+        };
+      })
+      .filter(Boolean);
+
     if (status) {
       return userSites.filter((s) => s.status === status);
     }
@@ -79,6 +93,7 @@ export class WorkSitesService {
 
     return {
       ...site,
+      supervisors: site.supervisorSites?.map((ss) => ss.user).filter(Boolean) || [],
       activeWorkersCount,
     };
   }

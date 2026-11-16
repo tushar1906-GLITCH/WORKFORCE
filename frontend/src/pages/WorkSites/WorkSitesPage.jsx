@@ -143,12 +143,16 @@ export const WorkSitesPage = () => {
 
   const openEditModal = (site) => {
     setActiveSiteForEdit(site);
+    const siteSupervisors = site.supervisors?.length
+      ? site.supervisors
+      : site.supervisorSites?.map((ss) => ss.user || ss).filter(Boolean) || [];
+
     setFormData({
       name: site.name,
       address: site.address,
       description: site.description || '',
       status: site.status,
-      supervisorIds: site.supervisors ? site.supervisors.map((s) => s.id) : [],
+      supervisorIds: siteSupervisors.map((s) => s.id || s.userId).filter(Boolean),
     });
     setEditModalOpen(true);
   };
@@ -347,30 +351,36 @@ export const WorkSitesPage = () => {
                   >
                     Assigned Supervisors:
                   </span>
-                  {site.supervisors && site.supervisors.length > 0 ? (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                      {site.supervisors.map((sup) => (
-                        <span
-                          key={sup.id}
-                          style={{
-                            fontSize: '0.72rem',
-                            fontWeight: 600,
-                            padding: '2px 8px',
-                            borderRadius: 'var(--radius-full)',
-                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                            color: 'var(--success)',
-                            border: '1px solid rgba(16, 185, 129, 0.25)',
-                          }}
-                        >
-                          {sup.fullName}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
-                      No supervisors assigned
-                    </span>
-                  )}
+                  {(() => {
+                    const sups = site.supervisors?.length
+                      ? site.supervisors
+                      : site.supervisorSites?.map((ss) => ss.user).filter(Boolean) || [];
+
+                    return sups.length > 0 ? (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                        {sups.map((sup) => (
+                          <span
+                            key={sup.id}
+                            style={{
+                              fontSize: '0.72rem',
+                              fontWeight: 600,
+                              padding: '2px 8px',
+                              borderRadius: 'var(--radius-full)',
+                              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                              color: 'var(--success)',
+                              border: '1px solid rgba(16, 185, 129, 0.25)',
+                            }}
+                          >
+                            {sup.fullName}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                        No supervisors assigned
+                      </span>
+                    );
+                  })()}
                 </div>
               </div>
 
