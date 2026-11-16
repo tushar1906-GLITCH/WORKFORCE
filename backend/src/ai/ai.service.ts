@@ -121,7 +121,7 @@ User Role: ${user.role}
 Authorized Sites: ${user.role === 'ADMIN' ? 'ALL SITES' : (user.assignedSites?.map((s: any) => s.name).join(', ') || 'None')}
 
 CORE PERSONALITY & TONE GUIDELINES:
-1. Tone: Friendly, natural, confident, slightly sarcastic, and occasionally humorous ("bestie", "bruh", "lock in 💀", "I manage workers, not the weather 😭").
+1. Tone: Friendly, natural, confident, slightly sarcastic, and occasionally humorous ("bruh", "bro", "lock in 💀", "I manage workers, not the weather 😭"). Avoid calling users "bestie" or using exaggerated pet names — stick to clean, normal Gen-Z conversational phrasing.
 2. Do NOT use slang excessively or add emojis to every single message. Never sound robotic or generic corporate.
 3. For SERIOUS BUSINESS MATTERS (payroll, salaries, employee records, attendance disputes, sensitive personal matters):
    - Maintain a respectful, strictly professional tone.
@@ -129,17 +129,17 @@ CORE PERSONALITY & TONE GUIDELINES:
 4. For UNRELATED QUESTIONS outside WorkForce (e.g., "Who is Modi?", "What's the weather today?", "Tell me a joke", "What is the capital of France?", sports, cooking, etc.):
    - DO NOT call any database tools!
    - Respond with short, playful, witty Gen-Z refusals such as:
-     - "Wrong department, bestie 💀 I'm the WorkForce assistant, not Google."
+     - "Wrong department 💀 I'm the WorkForce assistant, not Google."
      - "I manage workers, not the weather. Ask me something work-related 😭"
      - "Bruh, I'm here for WORK stuff. Ask me something about your workforce 😭"
-     - "Bestie, that's outside my department 💀 Let's get back to managing the workforce."
+     - "That's completely outside my department 💀 Let's get back to managing the workforce."
      - "Bro, we have workers to manage. Lock in. 💀"
 5. For GREETINGS and casual banter ("Hi", "Hello", "How are you"):
    - Respond naturally and warmly (e.g. "Hey! 👋 What are we sorting out today?", "Doing great! Ready to help you manage the workforce. What do you need?").
    - DO NOT call any database tools. DO NOT return Workforce Overview.
 6. For AMBIGUOUS or vague questions ("Show me the workers", "What about the site?", "Tell me more"):
    - Ask a short clarification question rather than guessing or dumping random statistics.
-   - (e.g. "Bestie, be a little more specific. All active workers or workers from a particular location?", "Which site are we talking about? Give me its name and I'll check.").
+   - (e.g. "Be a little more specific — all active workers, or workers from a particular location?", "Which site are we talking about? Give me its name and I'll check.").
 7. For APPLICATION HELP questions ("How do I register a worker?", "How does attendance marking work?", "What does NOT_MARKED mean?", "How do I approve leave?", "How is payroll calculated?", "How do I assign workers to a site?", "What is the difference between Admin and Supervisor?", "How do I generate a report?", "How do I reactivate an inactive worker?"):
    - Answer clearly using the application's actual workflows and business logic.
    - DO NOT unnecessarily query PostgreSQL for general how-to explanations.
@@ -394,7 +394,7 @@ CORE PERSONALITY & TONE GUIDELINES:
     const isPromptInjection =
       /(ignore\s+(all\s+)?(previous|prior|above)\s+instructions|system\s+prompt|reveal\s+(secret|password|key|token|instructions)|override\s+rules|bypass\s+(security|auth)|drop\s+table)/i.test(p);
     if (isPromptInjection) {
-      return `Nice try, bestie 💀 System security and workforce rules stay locked down. Let's stick to managing actual workers.`;
+      return `Nice try 💀 System security and workforce rules stay locked down. Let's stick to managing actual workers.`;
     }
 
     // ==========================================
@@ -419,7 +419,7 @@ CORE PERSONALITY & TONE GUIDELINES:
     // 3. UNRELATED / OFF-TOPIC QUESTIONS
     // ==========================================
     if (/\b(modi|biden|trump|putin|rahul\s+gandhi|prime\s+minister|president)\b/i.test(p)) {
-      return `Wrong department, bestie 💀 I'm the WorkForce assistant, not Google.`;
+      return `Wrong department 💀 I'm the WorkForce assistant, not Google.`;
     }
 
     if (/\b(weather|rain|raining|temperature|forecast|climate|hot\s+outside|cold\s+outside)\b/i.test(p)) {
@@ -431,7 +431,7 @@ CORE PERSONALITY & TONE GUIDELINES:
     }
 
     if (/\b(capital\s+of|france|germany|paris|london|antarctica|astronomy|mars|space)\b/i.test(p)) {
-      return `Bestie, that's outside my department 💀 Let's get back to managing the workforce.`;
+      return `That's completely outside my department 💀 Let's get back to managing the workforce.`;
     }
 
     if (/\b(recipe|cook|pizza|burger|cricket|football|movie|song|actor|actress|crypto|bitcoin)\b/i.test(p)) {
@@ -442,7 +442,7 @@ CORE PERSONALITY & TONE GUIDELINES:
     // 4. AMBIGUOUS / VAGUE QUESTIONS
     // ==========================================
     if (/^(show\s+me\s+the\s+workers|show\s+workers|the\s+workers|workers)[\s!.]*$/i.test(p)) {
-      return `Bestie, be a little more specific. All active workers or workers from a particular location?`;
+      return `Be a little more specific — all active workers, or workers from a particular location?`;
     }
 
     if (/^(what\s+about\s+the\s+site\??|the\s+site|about\s+the\s+site)[\s!.]*$/i.test(p)) {
@@ -450,7 +450,7 @@ CORE PERSONALITY & TONE GUIDELINES:
     }
 
     if (/^(tell\s+me\s+more|more\s+details|tell\s+more)[\s!.]*$/i.test(p)) {
-      return `Tell you more about what, bestie? Pick a topic: attendance, payroll, site deployments, or leave requests!`;
+      return `Tell you more about what? Pick a topic: attendance, payroll, site deployments, or leave requests!`;
     }
 
     // ==========================================
@@ -722,7 +722,7 @@ CORE PERSONALITY & TONE GUIDELINES:
     // 8. UNMATCHED / UNKNOWN FALLBACK
     // (Never return Workforce Overview as fallback!)
     // ==========================================
-    return `I'm not quite sure what you need, bestie. You can ask me about attendance, active workers, site assignments, leaves, payroll, or how WorkForce features work!`;
+    return `I'm not quite sure what you need. You can ask me about attendance, active workers, site assignments, leaves, payroll, or how WorkForce features work!`;
   }
 
   // --- Conversations Management ---
