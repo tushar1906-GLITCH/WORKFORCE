@@ -115,7 +115,7 @@ export class AiService {
   ) {
     const tools = this.aiToolsService.getToolsDefinitions();
 
-    const systemPrompt = `You are WorkForce AI, an intelligent, witty, friendly, and slightly sarcastic Gen-Z workplace assistant for WorkForce 2.0.
+    const systemPrompt = `You are ShramSetu AI, an intelligent, witty, friendly, and slightly sarcastic Gen-Z workplace assistant for ShramSetu.
 User Name: ${user.fullName}
 User Role: ${user.role}
 Authorized Sites: ${user.role === 'ADMIN' ? 'ALL SITES' : (user.assignedSites?.map((s: any) => s.name).join(', ') || 'None')}
@@ -126,10 +126,10 @@ CORE PERSONALITY & TONE GUIDELINES:
 3. For SERIOUS BUSINESS MATTERS (payroll, salaries, employee records, attendance disputes, sensitive personal matters):
    - Maintain a respectful, strictly professional tone.
    - Absolutely NO sarcasm, NO jokes about employees or their personal circumstances.
-4. For UNRELATED QUESTIONS outside WorkForce (e.g., "Who is Modi?", "What's the weather today?", "Tell me a joke", "What is the capital of France?", sports, cooking, etc.):
+4. For UNRELATED QUESTIONS outside ShramSetu (e.g., "Who is Modi?", "What's the weather today?", "Tell me a joke", "What is the capital of France?", sports, cooking, etc.):
    - DO NOT call any database tools!
    - Respond with short, playful, witty Gen-Z refusals such as:
-     - "Wrong department 💀 I'm the WorkForce assistant, not Google."
+     - "Wrong department 💀 I'm the ShramSetu assistant, not Google."
      - "I manage workers, not the weather. Ask me something work-related 😭"
      - "Bruh, I'm here for WORK stuff. Ask me something about your workforce 😭"
      - "That's completely outside my department 💀 Let's get back to managing the workforce."
@@ -232,7 +232,7 @@ CORE PERSONALITY & TONE GUIDELINES:
       /\b(how\s+(do|can)\s+i\s+(register|add|create|onboard)|how\s+to\s+(register|add|create|onboard))\b/i.test(p) &&
       p.includes('worker')
     ) {
-      return `### 📝 How to Register a Worker in WorkForce\n\n` +
+      return `### 📝 How to Register a Worker in ShramSetu\n\n` +
         `1. **Navigate to Workers Page:** Click **Workers** in the left sidebar.\n` +
         `2. **Click Add Worker:** In the top-right corner, click **"+ Add Worker"** (or use the Bulk CSV Import option).\n` +
         `3. **Fill Required Information:**\n` +
@@ -249,7 +249,7 @@ CORE PERSONALITY & TONE GUIDELINES:
       /\b(how\s+does\s+attendance\s+marking\s+work|how\s+(to|do\s+i|can\s+i)\s+mark\s+attendance|attendance\s+marking\s+workflow|attendance\s+marking\s+process)\b/i.test(p)
     ) {
       return `### 📋 How Attendance Marking Works\n\n` +
-        `WorkForce follows an **individual-first, shift-wise attendance process**:\n\n` +
+        `ShramSetu follows an **individual-first, shift-wise attendance process**:\n\n` +
         `1. **Open Daily Attendance:** Navigate to **Daily Attendance** from the sidebar.\n` +
         `2. **Select Context:** Choose the **Date**, **Shift** (Morning, Evening, Night), and **Work Site**.\n` +
         `3. **Review Scheduled Workers:** All workers assigned to that site and shift appear. Initial status is \`NOT_MARKED\`.\n` +
@@ -267,7 +267,7 @@ CORE PERSONALITY & TONE GUIDELINES:
       (/\bnot\s+marked\b/i.test(p) && /\b(mean|meaning|what\s+is|what\s+does)\b/i.test(p))
     ) {
       return `### ❓ What Does NOT_MARKED Mean?\n\n` +
-        `In WorkForce, \`NOT_MARKED\` means attendance has **not yet been recorded** for a worker scheduled for that specific date and shift.\n\n` +
+        `In ShramSetu, \`NOT_MARKED\` means attendance has **not yet been recorded** for a worker scheduled for that specific date and shift.\n\n` +
         `**Key Rules:**\n` +
         `- **NOT_MARKED is NOT Absent:** It is never counted as an unexcused absence in attendance rates or payroll deductions.\n` +
         `- **Blocks Finalization:** An attendance shift sheet **cannot be finalized** until all scheduled workers are explicitly set to \`PRESENT\`, \`ABSENT\`, or \`HALF_DAY\`.\n` +
@@ -293,7 +293,7 @@ CORE PERSONALITY & TONE GUIDELINES:
       /\b(how\s+is\s+payroll\s+calculated|how\s+(do|can)\s+you\s+calculate\s+payroll|payroll\s+calculation|salary\s+calculation|payroll\s+formula|salary\s+formula)\b/i.test(p)
     ) {
       return `### 💰 How Payroll is Calculated\n\n` +
-        `WorkForce calculates payroll per worker for each payroll cycle based on finalized attendance and configured wage rates:\n\n` +
+        `ShramSetu calculates payroll per worker for each payroll cycle based on finalized attendance and configured wage rates:\n\n` +
         `1. **Base Wage Calculation:**\n` +
         `   - **Daily Wage:** $(\\text{Present Days} + 0.5 \\times \\text{Half Days}) \\times \\text{Daily Rate}$\n` +
         `   - **Hourly Wage:** $\\text{Total Approved Hours} \\times \\text{Hourly Rate}$\n` +
@@ -320,7 +320,7 @@ CORE PERSONALITY & TONE GUIDELINES:
         `   - Choose the target **Work Site**.\n` +
         `   - Choose the **Worker** from the active worker directory.\n` +
         `   - Select the assigned **Shift** (Morning, Evening, Night) and effective **Start Date**.\n` +
-        `4. **Conflict Check:** WorkForce automatically verifies that the worker has no overlapping assignments or conflicting shifts.\n` +
+        `4. **Conflict Check:** ShramSetu automatically verifies that the worker has no overlapping assignments or conflicting shifts.\n` +
         `5. **Save:** Click **Save Assignment**. The worker will now appear on that site's daily attendance sheets.`;
     }
 
@@ -419,7 +419,7 @@ CORE PERSONALITY & TONE GUIDELINES:
     // 3. UNRELATED / OFF-TOPIC QUESTIONS
     // ==========================================
     if (/\b(modi|biden|trump|putin|rahul\s+gandhi|prime\s+minister|president)\b/i.test(p)) {
-      return `Wrong department 💀 I'm the WorkForce assistant, not Google.`;
+      return `Wrong department 💀 I'm the ShramSetu assistant, not Google.`;
     }
 
     if (/\b(weather|rain|raining|temperature|forecast|climate|hot\s+outside|cold\s+outside)\b/i.test(p)) {
@@ -722,7 +722,7 @@ CORE PERSONALITY & TONE GUIDELINES:
     // 8. UNMATCHED / UNKNOWN FALLBACK
     // (Never return Workforce Overview as fallback!)
     // ==========================================
-    return `I'm not quite sure what you need. You can ask me about attendance, active workers, site assignments, leaves, payroll, or how WorkForce features work!`;
+    return `I'm not quite sure what you need. You can ask me about attendance, active workers, site assignments, leaves, payroll, or how ShramSetu features work!`;
   }
 
   // --- Conversations Management ---

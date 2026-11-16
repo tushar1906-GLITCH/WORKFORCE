@@ -129,7 +129,7 @@ export const LoginPage = () => {
                 letterSpacing: '-0.02em',
               }}
             >
-              WorkForce Command
+              ShramSetu Command
             </h1>
             <span
               style={{
@@ -203,7 +203,7 @@ export const LoginPage = () => {
                 style={{ paddingLeft: '40px', height: '42px' }}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@workforce.local"
+                placeholder="name@shramsetu.local"
                 required
               />
             </div>
@@ -274,7 +274,7 @@ export const LoginPage = () => {
               <span>Authenticating Credentials...</span>
             ) : (
               <>
-                <span>Sign In to WorkForce</span>
+                <span>Sign In to ShramSetu</span>
                 <ArrowRight size={17} />
               </>
             )}

@@ -206,7 +206,7 @@ export const WorkersPage = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', 'WorkForce_Worker_Import_Template.csv');
+    link.setAttribute('download', 'ShramSetu_Worker_Import_Template.csv');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -809,7 +809,7 @@ export const WorkersPage = () => {
               <input
                 type="email"
                 className="form-control"
-                placeholder="worker@workforce.internal"
+                placeholder="worker@shramsetu.internal"
                 value={newWorker.email}
                 onChange={(e) => setNewWorker({ ...newWorker, email: e.target.value })}
               />

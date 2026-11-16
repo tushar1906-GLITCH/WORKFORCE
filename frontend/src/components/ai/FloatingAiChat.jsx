@@ -87,7 +87,7 @@ export const FloatingAiChat = () => {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          title="Open WorkForce AI Assistant"
+          title="Open ShramSetu AI Assistant"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -113,7 +113,7 @@ export const FloatingAiChat = () => {
           }}
         >
           <Sparkles size={18} />
-          <span>WorkForce AI</span>
+          <span>ShramSetu AI</span>
           <span
             style={{
               width: '8px',
@@ -171,7 +171,7 @@ export const FloatingAiChat = () => {
               </div>
               <div>
                 <div style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
-                  WorkForce AI
+                  ShramSetu AI
                 </div>
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                   Live PostgreSQL &bull; {isAdmin ? 'Admin' : 'Supervisor'}
@@ -241,7 +241,7 @@ export const FloatingAiChat = () => {
                   <Sparkles size={20} color="var(--primary)" />
                 </div>
                 <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)', marginBottom: '4px' }}>
-                  Ask WorkForce AI
+                  Ask ShramSetu AI
                 </div>
                 <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
                   Live operational queries across attendance, workers, and shifts.

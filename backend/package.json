@@ -1,7 +1,7 @@
 {
-  "name": "workforce-backend",
+  "name": "shramsetu-backend",
   "version": "1.0.0",
-  "description": "WorkForce - Labour and Workforce Management System API",
+  "description": "ShramSetu - Labour and Workforce Management System API",
   "author": "Antigravity",
   "private": true,
   "license": "UNLICENSED",

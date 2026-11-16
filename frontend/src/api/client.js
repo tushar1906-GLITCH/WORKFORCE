@@ -13,7 +13,7 @@ const apiClient = axios.create({
 // Request interceptor to attach JWT token
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('workforce_token');
+    const token = localStorage.getItem('shramsetu_token') || localStorage.getItem('workforce_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -28,6 +28,8 @@ apiClient.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       // Discard invalid token and redirect if on protected route
+      localStorage.removeItem('shramsetu_token');
+      localStorage.removeItem('shramsetu_user');
       localStorage.removeItem('workforce_token');
       localStorage.removeItem('workforce_user');
       if (window.location.pathname !== '/login') {

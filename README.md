@@ -1,4 +1,4 @@
-# WorkForce 2.0 — AI-Powered Enterprise Labour & Workforce Management System
+# ShramSetu — AI-Powered Enterprise Labour & Workforce Management System
 
 A centralized enterprise web application engineered for construction companies, manufacturing plants, logistics warehouses, and labour contractors to manage workers, site-scoped supervisor operations, individual-first attendance, leave approvals, wage history, payroll generation, audit logging, and **generative AI-powered operational intelligence**.
 
@@ -6,7 +6,7 @@ Built with **React**, **Vite**, **NestJS**, **TypeORM**, **PostgreSQL**, and **G
 
 ---
 
-## 1. WorkForce 2.0 Upgrades & Intelligence Layer
+## 1. ShramSetu Upgrades & Intelligence Layer
 
 ### 1.1 Groq-Powered AI Assistant (Database-Connected)
 - **Live PostgreSQL Tools:** The AI Assistant connects directly to PostgreSQL using 8 controlled, parameterized TypeORM query tools. AI never executes raw SQL.

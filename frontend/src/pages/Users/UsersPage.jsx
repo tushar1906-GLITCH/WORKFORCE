@@ -364,7 +364,7 @@ export const UsersPage = () => {
             <input
               type="email"
               className="form-control"
-              placeholder="operator@workforce.local"
+              placeholder="operator@shramsetu.local"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
               required

@@ -7,7 +7,7 @@ import { Bell, LogOut, Menu, CheckCircle2, Shield } from 'lucide-react';
 
 const PAGE_METADATA = {
   '/dashboard': { title: 'Command Center', subtitle: 'Live Workforce Operations & Metrics' },
-  '/ai-assistant': { title: 'WorkForce AI Assistant', subtitle: 'Groq LLM with Live Database Tools' },
+  '/ai-assistant': { title: 'ShramSetu AI Assistant', subtitle: 'Groq LLM with Live Database Tools' },
   '/workers': { title: 'Workers Directory', subtitle: 'Personnel Profiles, Rates & Status' },
   '/attendance': { title: 'Daily Attendance', subtitle: 'Shift-Scoped Tracking & Verification' },
   '/assignments': { title: 'Worker Assignments', subtitle: 'Site & Shift Workforce Allocations' },
@@ -39,7 +39,7 @@ export const Header = () => {
     } else if (location.pathname.startsWith('/payroll/')) {
       currentMeta = { title: 'Payroll Run Details', subtitle: 'Worker-Level Line Items & Calculations' };
     } else {
-      currentMeta = { title: 'WorkForce Command', subtitle: 'Industrial Workforce Management' };
+      currentMeta = { title: 'ShramSetu Command', subtitle: 'Industrial Workforce Management' };
     }
   }
 
@@ -374,7 +374,7 @@ export const Header = () => {
           onClick={logout}
           className="btn btn-secondary btn-sm"
           style={{ gap: '6px', height: '34px' }}
-          title="Sign out of WorkForce"
+          title="Sign out of ShramSetu"
         >
           <LogOut size={15} />
           <span style={{ fontSize: '0.78rem' }}>Exit</span>

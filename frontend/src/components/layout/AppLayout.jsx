@@ -69,7 +69,7 @@ export const AppLayout = () => {
           style={{ width: '48px', height: '48px', borderRadius: '12px' }}
         />
         <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-          Initializing WorkForce Command...
+          Initializing ShramSetu Command...
         </div>
       </div>
     );

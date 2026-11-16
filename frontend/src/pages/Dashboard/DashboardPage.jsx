@@ -472,7 +472,7 @@ export const DashboardPage = () => {
                 }}
               >
                 <Compass size={13} />
-                <span>WORKFORCE COMMAND // OPERATIONS NEXUS</span>
+                <span>SHRAMSETU COMMAND // OPERATIONS NEXUS</span>
               </div>
 
               {/* Live Operational Status Indicator */}

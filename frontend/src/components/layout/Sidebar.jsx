@@ -98,7 +98,7 @@ export const Sidebar = () => {
           >
             <Briefcase size={18} />
           </div>
-          {!collapsed && <span>WorkForce</span>}
+          {!collapsed && <span>ShramSetu</span>}
         </div>
         {!collapsed && (
           <span
@@ -392,7 +392,7 @@ export const Sidebar = () => {
             onClick={logout}
             className="btn btn-secondary btn-sm"
             style={{ padding: '6px', color: 'var(--text-muted)' }}
-            title="Sign out of WorkForce"
+            title="Sign out of ShramSetu"
           >
             <LogOut size={14} />
           </button>

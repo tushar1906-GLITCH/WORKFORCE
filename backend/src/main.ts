@@ -6,7 +6,7 @@ import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
-  const logger = new Logger('WorkForce-Bootstrap');
+  const logger = new Logger('ShramSetu-Bootstrap');
   const app = await NestFactory.create(AppModule);
 
   const configService = app.get(ConfigService);
@@ -36,9 +36,9 @@ async function bootstrap() {
 
   // Swagger Documentation
   const config = new DocumentBuilder()
-    .setTitle('WorkForce API')
+    .setTitle('ShramSetu API')
     .setDescription(
-      'WorkForce Labour and Workforce Management System — REST API Documentation with role-based and site-scoped access control.',
+      'ShramSetu Labour and Workforce Management System — REST API Documentation with role-based and site-scoped access control.',
     )
     .setVersion('1.0')
     .addBearerAuth()

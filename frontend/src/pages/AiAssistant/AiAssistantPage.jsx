@@ -335,7 +335,7 @@ export const AiAssistantPage = () => {
             </div>
             <div>
               <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>
-                WorkForce AI Assistant
+                ShramSetu AI Assistant
               </div>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                 PostgreSQL Database-Connected &bull; Groq Llama 3.3 Engine
@@ -685,7 +685,7 @@ export const AiAssistantPage = () => {
             }}
           >
             <span>Live data connected &bull; Strict role permission boundaries enforced</span>
-            <span>WorkForce 2.0 AI Assistant</span>
+            <span>ShramSetu AI Assistant</span>
           </div>
         </div>
       </div>

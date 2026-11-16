@@ -126,7 +126,7 @@ export const ReportsPage = () => {
   }, [reportType, startDate, endDate, selectedSiteId]);
 
   const handleExportCsv = () => {
-    const token = localStorage.getItem('workforce_token');
+    const token = localStorage.getItem('shramsetu_token') || localStorage.getItem('workforce_token');
     const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000/api/v1';
 
     let exportUrl = '';

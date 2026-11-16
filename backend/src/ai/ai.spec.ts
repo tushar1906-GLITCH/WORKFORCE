@@ -483,7 +483,7 @@ describe('WorkForce 2.0 AI Assistant & Database Tools Suite', () => {
     // 8. Application help: How do I register a worker?
     it('Scenario 8: App Help - How do I register a worker?', async () => {
       const res = await aiService.chat(adminUser, 'How do I register a worker?');
-      expect(res.message.content).toContain('How to Register a Worker in WorkForce');
+      expect(res.message.content).toContain('How to Register a Worker in ShramSetu');
       expect(res.message.content).toContain('Phone Number');
       expect(res.message.content).toContain('10-digit');
       expect(res.message.content).not.toContain('Workforce Overview');
@@ -534,7 +534,7 @@ describe('WorkForce 2.0 AI Assistant & Database Tools Suite', () => {
     // 14. Unrelated: Who is Modi?
     it('Scenario 14: Unrelated - Who is Modi?', async () => {
       const res = await aiService.chat(adminUser, 'Who is Modi?');
-      expect(res.message.content).toBe('Wrong department 💀 I\'m the WorkForce assistant, not Google.');
+      expect(res.message.content).toBe('Wrong department 💀 I\'m the ShramSetu assistant, not Google.');
       expect(res.message.content).not.toContain('Workforce Overview');
       expect(mockWorkerRepo.createQueryBuilder).not.toHaveBeenCalled();
     });
