@@ -945,7 +945,7 @@ button, input, select, textarea {
    ========================================================================== */
 .toast-container {
   position: fixed;
-  bottom: 96px;
+  bottom: 24px;
   right: 24px;
   z-index: var(--z-toast);
   display: flex;

@@ -4,7 +4,6 @@ import { useAuth } from '../../context/AuthContext';
 import { SidebarProvider, useSidebar } from '../../context/SidebarContext';
 import Sidebar from './Sidebar';
 import Header from './Header';
-import FloatingAiChat from '../ai/FloatingAiChat';
 
 const LayoutContent = () => {
   const { collapsed, mobileOpen, closeMobile } = useSidebar();
@@ -44,8 +43,6 @@ const LayoutContent = () => {
           <Outlet />
         </main>
       </div>
-
-      <FloatingAiChat />
     </div>
   );
 };

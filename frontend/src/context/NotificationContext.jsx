@@ -74,12 +74,12 @@ export const NotificationProvider = ({ children }) => {
       }}
     >
       {children}
-      {/* Toast Alert Stack — Positioned at bottom:96px to clear Floating AI Assistant Button */}
+      {/* Toast Alert Stack */}
       <div
         className="toast-container"
         style={{
           position: 'fixed',
-          bottom: '96px',
+          bottom: '24px',
           right: '24px',
           zIndex: 'var(--z-toast, 70)',
           display: 'flex',
